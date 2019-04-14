@@ -70,9 +70,9 @@ if __name__ == "__main__":
         r_wrist_y = r_wrist[1]
         l_wrist_x = l_wrist[0]
         l_wrist_y = l_wrist[1]
-        #print("RWrist: "+str(r_wrist_x))
-        #print("LWrist: "+str(l_wrist_x))
         action = ""
+        # Only track if both wrists are seen with a confidence of > 0.3
+        # Only works with both wrists at the moment because of robustness
         if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
             if num_frames < 30:
                 r_wrist_x_old = r_wrist_x
@@ -83,7 +83,9 @@ if __name__ == "__main__":
 		    	#    print("[STATUS] calibration successfull...")   
                 pass    
             else:
+                # A x value of -1 means that the wrist was not recognized correctly
                 # Open presentation and stuff:
+                # Left wrist
                 if(l_wrist_x > -1):
                     print("L: "+str(l_wrist_x_old) + "  "+ str(l_wrist_x))
                     cv2.circle(clone, (l_wrist_x, l_wrist_y), 10, (0,0,255), -1)
@@ -98,6 +100,7 @@ if __name__ == "__main__":
                             action = "PREV"
                             presentation.previous_slide()
                     l_wrist_x_old = l_wrist_x
+                # Right wrist
                 if(r_wrist_x > -1):
                     print("R: "+str(r_wrist_x_old) + "  "+ str(r_wrist_x))
                     cv2.circle(clone, (r_wrist_x, r_wrist_y), 10, (255,0,0), -1)
@@ -112,6 +115,7 @@ if __name__ == "__main__":
                             presentation.next_slide()
                             action="NEXT"
                     r_wrist_x_old = r_wrist_x
+            # Show what is done
             cv2.putText(clone, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
             
 

@@ -60,6 +60,7 @@ def init_openpose():
     return opWrapper
 
 # Creates datum from image and returns right wrist and left wrist with confidence 
+# The return value is [-1,-1,0] if something did not work
 def getKeypointsFromImage(imageToProcess,opWrapper):
     datum = op.Datum()
     datum.cvInputData = imageToProcess
@@ -68,6 +69,7 @@ def getKeypointsFromImage(imageToProcess,opWrapper):
     return getKeypointsFromDatum(datum)
 
 # returns right wrist and left wrist with confidence values from datum
+# The return value is [-1,-1,0] if something did not work
 def getKeypointsFromDatum(datum):
     #print("Body keypoints: \n" + str(datum.poseKeypoints))
     poseKeypoints = datum.poseKeypoints
