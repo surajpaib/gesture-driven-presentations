@@ -9,7 +9,7 @@ from wrappers import PowerpointWrapper, PresentationWrapper
 wrapper = PowerpointWrapper()
 
 # Then, you can use the wrapper to create a PresentationWrapper.
-presentation = wrapper.open_presentation("../sample_presentation.pptx")
+presentation = wrapper.open_presentation("../MRP-6.pptx")
 
 # Next calls are really self-explanatory.
 presentation.run_slideshow()
