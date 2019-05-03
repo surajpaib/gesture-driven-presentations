@@ -10,6 +10,7 @@ from openpose_utils import *
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
+
 def extract_hand_regions(frame: np.ndarray, hand_rectangles: List[op.Rectangle]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Crops out the two hand regions from the image, based on the given rectangles.
@@ -44,16 +45,18 @@ def extract_hand_regions(frame: np.ndarray, hand_rectangles: List[op.Rectangle])
     # Return the two regions.
     return left_hand_region, right_hand_region
 
+
 def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarray):
     # TODO
     pass
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
 # Main function
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 if __name__ == "__main__":
     # Initialize OpenPose.
-    opWrapper = init_openpose(net_resolution="176x-1", hand_detection=True)
+    opWrapper = init_openpose(net_resolution="176x-1", hand_detection=False)
 
     # Get the reference to the webcam.
     camera = cv2.VideoCapture(0)
@@ -67,7 +70,7 @@ if __name__ == "__main__":
     l_wrist_x_old = 0
 
     # Keep looping, until interrupted by a Q keypress.
-    while(True):
+    while True:
         # Measure frame time.
         start_frame_time = current_milli_time()
 
@@ -94,6 +97,8 @@ if __name__ == "__main__":
             r_wrist = keypoints[0]
             l_wrist = keypoints[1]
             action = ""
+            print("Keypoint 0", keypoints[0])
+            # print("Keypoint 1", keypoints[1])
 
             # Only track if both wrists are seen with a confidence of > 0.3.
             if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
@@ -103,11 +108,11 @@ if __name__ == "__main__":
                 l_wrist_y = l_wrist[1]
 
                 # Display circles on the wrists.
-                cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0,0,255), -1)
-                cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255,0,0), -1)
+                cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
+                cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
 
                 # Left wrist: open/previous slide.
-                if(l_wrist_x_old - l_wrist_x > 150):
+                if l_wrist_x_old - l_wrist_x > 150:
                     if not presentation_opened:
                         action = "OPEN"
                         wrapper = PowerpointWrapper()
@@ -120,7 +125,7 @@ if __name__ == "__main__":
                 l_wrist_x_old = l_wrist_x
 
                 # Right wrist: open/next slide.
-                if(r_wrist_x - r_wrist_x_old > 150):
+                if r_wrist_x - r_wrist_x_old > 150:
                     if not presentation_opened:
                         action = "OPEN"
                         wrapper = PowerpointWrapper()
@@ -129,16 +134,16 @@ if __name__ == "__main__":
                         presentation_opened = True
                     else:
                         presentation.next_slide()
-                        action="NEXT"
+                        action = "NEXT"
                 r_wrist_x_old = r_wrist_x
 
             # Show if any action has been done.
-            cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+            cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         # Stop measuring frame time and display FPS.
         end_frame_time = current_milli_time()
-        frame_time = (end_frame_time - start_frame_time) / 1000 # seconds
-        cv2.putText(frame, "FPS: %d" % int(1/frame_time), (70, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+        frame_time = (end_frame_time - start_frame_time) / 1000  # seconds
+        cv2.putText(frame, "FPS: %d" % int(1 / frame_time), (70, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         # Display the video frame.
         cv2.imshow("Video Feed", frame)
