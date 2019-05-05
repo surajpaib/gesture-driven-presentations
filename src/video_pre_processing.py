@@ -12,15 +12,20 @@ def change_videos(effect, video_directory_str):
             video = VideoFileClip(video_directory_str + "/" + filename)
             if effect == "mirror_x":
                 out = video.fx(vfx.mirror_x)
-                new_filename = filename.split(".")[0] + '_mirror_x.mp4'
+                new_filename = filename.split(".")[0] + '_flipped.mp4'
             else:
                 out = video.fx(vfx.time_mirror)
                 new_filename = filename.split(".")[0] + '_time_mirror.mp4'
 
-            out.write_videofile("../videos_output/" + new_filename)
+            out.write_videofile(video_directory_str + "_flipped" + "/" + new_filename)
             print("Video save done", new_filename)
             print()
             video.close()
 
 
-change_videos("mirror_x", '../videos')
+change_videos("mirror_x", './right_arm_next')
+change_videos("mirror_x", './right_arm_prev')
+change_videos("mirror_x", './left_arm_next')
+change_videos("mirror_x", './left_arm_prev')
+change_videos("mirror_x", './reset')
+change_videos("mirror_x", './start_stop')
