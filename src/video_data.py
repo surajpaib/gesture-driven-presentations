@@ -32,8 +32,3 @@ class VideoData:
     @property
     def fps(self):
         return self._framerate
-
-if __name__ == "__main__":
-    v = VideoData()
-    v.load_xml_file("C:\\Users\\AGANDO\\Videos\\videos\\Processing_Results_LNext_7\\2019-05-0211-25-02_mirror_x.mp4-reversed_7.xml")
-    print(v.get_keypoints_from_frame(0)[0])
