@@ -41,9 +41,11 @@ def init_openpose(net_resolution="-1x368", hand_detection=False) -> op.WrapperPy
     params["model_folder"] = "../openpose/models"
     params["model_pose"] = "BODY_25"
     params["net_resolution"] = net_resolution
-    if hand_detection:
-        params["hand"] = 1
-        params["hand_net_resolution"] = "16x16" # we're only using it for the hand rectangles, which work at any resolution
+
+    # NOTE: Activating hand detection is unnecessary now! Just keeping this code for reference.
+    # if hand_detection:
+    #     params["hand"] = 1
+    #     params["hand_net_resolution"] = "16x16" # we're only using it for the hand rectangles, which work at any resolution
 
     # Start OpenPose.
     opWrapper = op.WrapperPython()
@@ -62,17 +64,47 @@ def process_image(imageToProcess: np.ndarray, opWrapper: op.WrapperPython) -> op
     opWrapper.emplaceAndPop([datum])
     return datum
 
+def get_distance(p1, p2):
+    pixelX = p1[0] - p2[0]
+    pixelY = p1[1] - p2[1]
+    return np.sqrt(pixelX * pixelX + pixelY * pixelY)
+
+def get_hand_rectangle_from_keypoints(wrist, elbow, shoulder) -> op.Rectangle:
+    """
+    Adapted from original CPP code:
+    https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/src/openpose/hand/handDetector.cpp
+    """
+
+    ratio_wrist_elbow = 0.33 # Taken from openpose
+
+    hand_rectangle = op.Rectangle()
+    hand_rectangle.x = wrist[0] + ratio_wrist_elbow * (wrist[0] - elbow[0])
+    hand_rectangle.y = wrist[1] + ratio_wrist_elbow * (wrist[1] - elbow[1])
+
+    distance_wrist_elbow = get_distance(wrist,elbow)
+    distance_elbow_shoulder = get_distance(elbow,shoulder)
+
+    hand_rectangle.width = 1.5 * np.max([distance_wrist_elbow, 0.9 * distance_elbow_shoulder])
+    hand_rectangle.height = hand_rectangle.width
+    hand_rectangle.x -= hand_rectangle.width / 2.
+    hand_rectangle.y -= hand_rectangle.width / 2.
+
+    return hand_rectangle
+
 def get_hand_rectangles_from_datum(datum: op.Datum) -> Optional[List[op.Rectangle]]:
     """
     Returns a list of two rectangles (left hand, right hand), or None (if no person was detected).
-    NOTE: the rectangles might be (0,0,0,0) if the corresponding hand was not detected!
+    If a rectangle is not detected, that value in the list will be None.
+    NOTE: currently only computing the right hand rectangle.
     """
 
-    if len(datum.handRectangles) > 0:
-        return datum.handRectangles[0]
-    else:
-        # No person detected.
+    keypoints = get_keypoints_from_datum(datum, ["RWrist", "RElbow", "RShoulder"])
+    if keypoints is None:
+        # Something went wrong: probably OpenPose did not detect any person. 
         return None
+
+    hand_rectangles = [None, get_hand_rectangle_from_keypoints(keypoints[0], keypoints[1], keypoints[2])]
+    return hand_rectangles
 
 def get_keypoints_from_datum(datum: op.Datum, keypoints: List[str]) -> Optional[List[List[float]]]:
     """

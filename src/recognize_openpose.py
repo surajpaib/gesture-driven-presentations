@@ -16,7 +16,6 @@ from wrappers import PowerpointWrapper, PresentationWrapper
 from openpose_utils import *
 
 current_milli_time = lambda: int(round(time.time() * 1000))
-
 timer_seconds = current_milli_time() / 1000
 
 def extract_hand_regions(frame: np.ndarray, hand_rectangles: List[op.Rectangle]) -> Tuple[np.ndarray, np.ndarray]:
@@ -25,7 +24,7 @@ def extract_hand_regions(frame: np.ndarray, hand_rectangles: List[op.Rectangle])
     """
 
     # Extract left hand rectangle if it was detected.
-    if hand_rectangles[0].x != 0:
+    if hand_rectangles[0] is not None:
         rect_x_1 = int(hand_rectangles[0].x)
         rect_y_1 = int(hand_rectangles[0].y)
         rect_x_2 = int(hand_rectangles[0].x + hand_rectangles[0].width)
@@ -35,7 +34,7 @@ def extract_hand_regions(frame: np.ndarray, hand_rectangles: List[op.Rectangle])
         left_hand_region = None
 
     # Extract right hand rectangle if it was detected.
-    if hand_rectangles is not None and hand_rectangles[1].x != 0:
+    if hand_rectangles[1] is not None:
         rect_x_1 = int(hand_rectangles[1].x)
         rect_y_1 = int(hand_rectangles[1].y)
         rect_x_2 = int(hand_rectangles[1].x + hand_rectangles[1].width)
@@ -45,85 +44,20 @@ def extract_hand_regions(frame: np.ndarray, hand_rectangles: List[op.Rectangle])
         right_hand_region = None
 
     # Display the two rectangles.
-    # difference_seconds = ((current_milli_time() / 1000) - timer_seconds) % 5
     if left_hand_region is not None and left_hand_region.shape[0] > 0 and left_hand_region.shape[1] > 0:
         pass
         # cv2.imshow("Left hand region", left_hand_region)
-        # if int(difference_seconds) == 0:
-            # print("SAVING!")
-            # cv2.imwrite("imgs/left_hand_%d.png" % (int((current_milli_time() / 1000) - timer_seconds) // 5), left_hand_region)
     if right_hand_region is not None and right_hand_region.shape[0] > 0 and right_hand_region.shape[1] > 0:
         cv2.imshow("Right hand region", right_hand_region)
-        # print("Difference (seconds): %d" % difference_seconds)
-        # if int(difference_seconds) == 0:
-            # cv2.imwrite("imgs/right_hand_%d.png" % (int((current_milli_time() / 1000) - timer_seconds) // 5), right_hand_region)
 
     # Return the two regions.
     return left_hand_region, right_hand_region
 
-def extract_skin_hsv(image):
-    # Taking a copy of the image
-    img = image.copy()
-    # Converting from BGR Colours Space to HSV
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-
-    # Defining HSV Threadholds
-    lower_threshold = np.array([0, 48, 80], dtype=np.uint8)
-    upper_threshold = np.array([20, 255, 255], dtype=np.uint8)
-
-    # Single Channel mask,denoting presence of colours in the about threshold
-    skinMask = cv2.inRange(img, lower_threshold, upper_threshold)
-
-    # Cleaning up mask using Gaussian Filter
-    skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
-
-    # Extracting skin from the threshold mask
-    skin = cv2.bitwise_and(img, img, mask=skinMask)
-
-    # Return the Skin image
-    return cv2.cvtColor(skin, cv2.COLOR_HSV2BGR)
-
-def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarray, method='slic'):
-    
-    if left_hand_region is not None and left_hand_region.size > 0:
-        if method == 'hsv':
-            left_hand_segmented = extract_skin_hsv(left_hand_region)
-            cv2.imshow("Left hand HSV skin segmentation", left_hand_segmented)
-        elif method == 'felzenswalb':
-            left_hand_segmented = seg.felzenszwalb(left_hand_region)
-        elif method == 'slic':
-            left_hand_segmented = seg.slic(left_hand_region, n_segments=10)
-        elif method == 'quickshift':
-            left_hand_segmented = seg.quickshift(left_hand_region)
-
-        left_hand_colored = color.label2rgb(left_hand_segmented, left_hand_region, kind='avg')
-        cv2.imshow("Left hand segmented", left_hand_colored)
-    else:
-        left_hand_segmented = None
-
-    if right_hand_region is not None and right_hand_region.size > 0:
-        if method == 'hsv':
-            right_hand_segmented = extract_skin_hsv(right_hand_region)
-            cv2.imshow("Right hand HSV skin segmentation", right_hand_segmented)
-        elif method == 'felzenswalb':
-            right_hand_segmented = seg.felzenszwalb(right_hand_region)
-        elif method == 'slic':
-            right_hand_segmented = seg.slic(right_hand_region, n_segments=10)
-        elif method == 'quickshift':
-            right_hand_segmented = seg.quickshift(right_hand_region)
-
-        right_hand_colored = color.label2rgb(right_hand_segmented, right_hand_region, kind='avg')
-        cv2.imshow("Right hand segmented", right_hand_colored)
-    else:
-        right_hand_segmented = None
-
-    return left_hand_segmented, right_hand_segmented
-
-#-------------------------------------------------------------------------------
-# Main function
-#-------------------------------------------------------------------------------
-
 def save_region(event,x,y,flags,param):
+    """
+    Helper function used for data collection.
+    """
+
     global left_hand_region, right_hand_region
     if event == cv2.EVENT_LBUTTONDBLCLK:
         print("SAVING REGION")
@@ -132,13 +66,75 @@ def save_region(event,x,y,flags,param):
         # if left_hand_region is not None:
         #     cv2.imwrite("data/left_hand_palm/%d.png" % (int(current_milli_time()) // 5), left_hand_region)
         # if right_hand_region is not None:
-        #     cv2.imwrite("data/right_hand_fist/%d.png" % (int(current_milli_time()) // 5), right_hand_region)
-        if right_hand_region is not None:
-            cv2.imwrite("data/right_hand_palm/%d.png" % (int(current_milli_time()) // 5), right_hand_region)
+        #     cv2.imwrite("data/right_hand_palm/%d.png" % (int(current_milli_time()) // 5), right_hand_region)
+        # if right_hand_region is not None:
+            # cv2.imwrite("data/right_hand_fist/%d.png" % (int(current_milli_time()) // 5), right_hand_region)
+
+def basic_preprocessing_steps(img):
+    new_img = cv2.blur(img, (5,5))
+    return new_img
+
+def condition_1(rgb_img, hsv_img, ycrcb_img):
+    rgb = rgb_img
+    hsv = hsv_img
+    ycrcb = ycrcb_img
+    return (hsv[:,:,0] >= 0) & (hsv[:,:,0] <= 25) & (hsv[:,:,1] >= 0.23 * 255) \
+        & (hsv[:,:,1] <= 0.68 * 255) & (rgb[:,:,0] > 95) & (rgb[:,:,1] > 40) \
+        & (rgb[:,:,2] > 20) & (rgb[:,:,0] > rgb[:,:,1]) & (rgb[:,:,0] > rgb[:,:,2]) \
+        & (np.abs(rgb[:,:,0] - rgb[:,:,1]) > 15)
+
+def condition_2(rgb_img, hsv_img, ycrcb_img):
+    rgb = rgb_img
+    hsv = hsv_img
+    ycrcb = ycrcb_img
+    return (rgb[:,:,0] > 95) & (rgb[:,:,1] > 40) & (rgb[:,:,2] > 20) \
+        & (rgb[:,:,0] > rgb[:,:,1]) & (rgb[:,:,0] > rgb[:,:,2]) & (np.abs(rgb[:,:,0] - rgb[:,:,1]) > 15) \
+        & (ycrcb[:,:,2] > 85) & (ycrcb[:,:,0] > 80) & (ycrcb[:,:,1] <= 1.5862*ycrcb[:,:,2]+20) \
+        & (ycrcb[:,:,1] >= 0.3448*ycrcb[:,:,2]+76.2069) & (ycrcb[:,:,1] >= -4.5652*ycrcb[:,:,2]+234.5652) \
+        & (ycrcb[:,:,1] <= -1.15*ycrcb[:,:,2]+301.75) & (ycrcb[:,:,1] <= -2.2857*ycrcb[:,:,2]+432.85)
+
+def skin_segmentation_thresholds(img):
+    """
+    Based on https://arxiv.org/ftp/arxiv/papers/1708/1708.02694.pdf .
+    Perform thresholding in RGB, HSV and YCrCb at the same time.
+    
+    NOTE: OpenCV color ranges are: H from 0-179, S and V from 0-255
+    """
+    
+    img = basic_preprocessing_steps(img)
+    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+    
+    mask = condition_1(rgb_img, hsv_img, ycrcb_img) | condition_2(rgb_img, hsv_img, ycrcb_img)
+            
+    return mask
+
+def hand_segmentation(hand_image):
+    # Perform thresholding segmentation and resize to a fixed size.
+    mask = skin_segmentation_thresholds(hand_image).astype(np.uint8)
+    mask = cv2.resize(mask, (150, 150), interpolation=cv2.INTER_NEAREST)
+    
+    # Apply some morphological operations.
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    mask = cv2.dilate(mask, kernel, iterations = 1)
+    
+    # Extract contours and only keep the biggest contour.
+    final_mask = np.zeros(mask.shape, np.uint8)
+    _, contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    if len(contours) != 0:
+        max_contour = max(contours, key = cv2.contourArea)
+        cv2.drawContours(final_mask, [max_contour], -1, (255,0,0), thickness=cv2.FILLED)
+    
+    return final_mask
+
+#-------------------------------------------------------------------------------
+# Main function
+#-------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     # Initialize OpenPose.
-    opWrapper = init_openpose(net_resolution="176x-1", hand_detection=True)
+    opWrapper = init_openpose(net_resolution="176x-1", hand_detection=False)
 
     # Get the reference to the webcam.
     cv2.namedWindow('Video Feed')
@@ -174,7 +170,9 @@ if __name__ == "__main__":
         if hand_rectangles:
             global left_hand_region, right_hand_region
             left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
-            # left_hand_segmented, right_hand_segmented = hand_segmentation(left_hand_region, right_hand_region)
+            if right_hand_region is not None and right_hand_region.size != 0:
+                right_hand_segmented = hand_segmentation(right_hand_region)
+                cv2.imshow("Right hand segmented", right_hand_segmented)
 
         # Perform gesture recognition on the arm keypoints.
         # if keypoints is not None:
@@ -235,15 +233,6 @@ if __name__ == "__main__":
         keypress = cv2.waitKey(1) & 0xFF
         if keypress == ord("q"):
             break
-        # if keypress == ord("a"):
-            # if left_hand_region is not None:
-            #     cv2.imwrite("data/left_hand_fist/%d.png" % (int(current_milli_time()) // 5), left_hand_region)
-            # if left_hand_region is not None:
-            #     cv2.imwrite("data/left_hand_palm/%d.png" % (int(current_milli_time()) // 5), left_hand_region)
-            # if right_hand_region is not None:
-            #     cv2.imwrite("data/right_hand_fist/%d.png" % (int(current_milli_time()) // 5), right_hand_region)
-            # if right_hand_region is not None:
-            #     cv2.imwrite("data/right_hand_palm/%d.png" % (int(current_milli_time()) // 5), right_hand_region)
 
 # Clean up.
 camera.release()
