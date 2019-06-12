@@ -8,12 +8,12 @@ from frame_data import FrameData
 
 
 class VideoData:
-    def __init__(self):
+    def __init__(self, interpolations_frames, noise_frames=2):
         self._frames = []
         self._label = ""
         self._framerate = 0
-        self.noise_frames = 2
-        self.interpolation_frames = 4
+        self.noise_frames = noise_frames
+        self.interpolation_frames = interpolations_frames
 
     def get_keypoints_from_frame(self, frame_number):
         return (self._frames[frame_number]).keypoints
