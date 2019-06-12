@@ -35,12 +35,14 @@ train_data = torchvision.datasets.MNIST(
     download=DOWNLOAD_MNIST,                        # download it if you don't have it
 )
 '''
-#ImageFolder
+#DatasetFolder
 TRAIN_DATA_PATH = './data2/'
-
-train_data = torchvision.datasets.ImageFolder(
+LOADER = ''
+train_data = torchvision.datasets.DatasetFolder(
 
     root=TRAIN_DATA_PATH,
+    loader=LOADER,
+    extensions='.npy',
     transform=torchvision.transforms.ToTensor()    # Converts a PIL.Image or numpy.ndarray to
                                      # torch.FloatTensor of shape (C x H x W) and normalize in the range [0.0, 1.0]
 )
