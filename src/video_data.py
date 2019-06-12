@@ -42,15 +42,16 @@ class VideoData:
     def fps(self):
         return self._framerate
 
-    def generate_matrices(self):
+    def generate_matrices(self, matrix_size):
         def sort_func(keypoint):
             return keypoint[0]
 
+        MATRIX_SIZE = matrix_size
         matrix_list = []
         last_keypoint_list = []
         for i in range(self.noise_frames, len(self._frames) - self.noise_frames * 2 - 1):
             frame = self._frames[i]
-            matrix = np.zeros((64, 64))
+            matrix = np.zeros((MATRIX_SIZE, MATRIX_SIZE))
 
             if i != self.noise_frames:
                 matrix = matrix_list[i - self.noise_frames - 1]
@@ -61,13 +62,13 @@ class VideoData:
                     last_keypoint_list.append([])
 
                 last_keypoints = last_keypoint_list[k]
-                if (len(last_keypoints) > 3):
+                if len(last_keypoints) > 3:
                     last_keypoints.pop(0)
 
                 keypoint = (frame.keypoints[2:8])[k]
                 if keypoint[2] > 0.5:
-                    key_x = int(keypoint[0] * 16 + 32)
-                    key_y = int(keypoint[1] * 16 + 8)
+                    key_x = int(keypoint[0] * MATRIX_SIZE / 4 + MATRIX_SIZE / 2)
+                    key_y = int(keypoint[1] * MATRIX_SIZE / 4 + MATRIX_SIZE / 8)
                     matrix[key_y, key_x] = 1
                     last_keypoints.append([key_x, key_y])
                 else:
