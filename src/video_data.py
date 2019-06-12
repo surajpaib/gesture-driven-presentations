@@ -61,7 +61,8 @@ class VideoData:
                     matrix[key_y,key_x] = 1
                     last_keypoints.append([key_x,key_y])
                 else:
-                    last_keypoints.append(last_keypoints[-1])
+                    if len(last_keypoints) > 0:
+                        last_keypoints.append(last_keypoints[-1])
                 if len(last_keypoints) > 1:
                     #last_keypoints.sort(key=sort_func)
                     last_keypoints_x = [p[0] for p in last_keypoints]
@@ -92,7 +93,7 @@ class VideoData:
 
 if __name__ == "__main__":
     data = VideoData()
-    data.load_xml_file("../process_results/output.xml")
+    data.load_xml_file("../process_results/2019-05-02_11-57-40_7.xml")
     matrix_list = data.generate_matrices()
     for matrix in matrix_list[:9]:
         plt.figure()

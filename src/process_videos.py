@@ -39,7 +39,7 @@ def normalize_point(point_to_normalize, avg_dist, avg_point):
         return [nx,ny]
 
 def get_frame_list_of_video(video_path):
-    cap = cv2.VideoCapture('./input.mp4')
+    cap = cv2.VideoCapture(video_path)
     frame_rate = cap.get(cv2.CAP_PROP_FPS)
     frame_list = []
 
@@ -132,18 +132,16 @@ def process_video(video_path, label, output_path,output_path_7, update=False):
 
     print("Finished")
 if __name__ == "__main__":
-    video_dir = Path('C:\\Users\\AGANDO\\Videos\\videos\\reset')
-    result_dir = video_dir.parent / "Processing_Results_Reset"
-    result_dir_7 = video_dir.parent / "Processing_Results_Reset_7"
+    video_dir = Path('C:\\Users\\AGANDO\\Videos\\videos\\start_stop')
+    result_dir = video_dir.parent / "Processing_Results_Start_Stop"
+    result_dir_7 = video_dir.parent / "Processing_Results_Start_Stop_7"
     opWrapper = init_openpose(hand_detection=False)
     count = 0
     for video in video_dir.iterdir():
         if(video.is_file()):
-            if(count == 500):
-                print("Finished")
-                break
             output_file_path = result_dir / (video.stem + ".xml")
             output_file_path_7 = result_dir_7 / (video.stem + "_7.xml")
             print(str(output_file_path))
-            process_video(str(video),"Reset",output_file_path,output_file_path_7,update=True)
+            process_video(str(video),"Start_Stop",output_file_path,output_file_path_7,update=True)
             count = count + 1
+    print("Finished")
