@@ -7,7 +7,6 @@ matplotlib
 numpy
 """
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.data as utils
@@ -23,10 +22,6 @@ EPOCH = 10
 BATCH_SIZE = 64
 LR = 0.005  # learning rate
 N_TEST_IMG = 5
-
-# DatasetFolder
-TRAIN_DATA_PATH = '../xml_files/'
-LOADER = ''
 
 # Autoencoder does not have labels
 train_data, _ = load_video_data_labels(7, 2, 32)
@@ -83,7 +78,8 @@ view_data = train_data_tensor[:N_TEST_IMG].contiguous().view(-1, train_data.shap
     torch.FloatTensor) / 255.
 for i in range(N_TEST_IMG):
     a[0][i].imshow(np.reshape(view_data.data.numpy()[i], (train_data.shape[1], train_data.shape[2])), cmap='gray')
-    a[0][i].set_xticks(()); a[0][i].set_yticks(())
+    a[0][i].set_xticks(());
+    a[0][i].set_yticks(())
 
 for epoch in range(EPOCH):
     for step, (x, b_label) in enumerate(train_loader):
@@ -92,7 +88,7 @@ for epoch in range(EPOCH):
 
         encoded, decoded = autoencoder(b_x)
 
-        loss = loss_func(decoded, b_y) * 1000 # mean square error
+        loss = loss_func(decoded, b_y) * 1000  # mean square error
         optimizer.zero_grad()  # clear gradients for this training step
         loss.backward()  # backpropagation, compute gradients
         optimizer.step()  # apply gradients
