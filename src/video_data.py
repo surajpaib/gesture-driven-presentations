@@ -48,7 +48,7 @@ class VideoData:
 
         matrix_list = []
         last_keypoint_list = []
-        for i in range(self.noise_frames, len(self._frames) - self.noise_frames):
+        for i in range(self.noise_frames, len(self._frames) - self.noise_frames * 2 - 1):
             frame = self._frames[i]
             matrix = np.zeros((64, 64))
 
@@ -93,7 +93,7 @@ class VideoData:
             matrix_list.append(matrix.copy())
 
         # -2 because first index is 0
-        return np.array(matrix_list[self.interpolation_frames - 2:])
+        return np.float32(np.array(matrix_list[self.interpolation_frames - 2:]))
 
     def prep_mat(self, frame):
         for x in range(len(frame)):
