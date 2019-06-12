@@ -14,7 +14,7 @@ import torch.utils.data as utils
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 
-from src.load_data import *
+from src.load_data import load_video_data_labels
 
 # torch.manual_seed(1)    # reproducible
 
@@ -22,16 +22,22 @@ from src.load_data import *
 EPOCH = 10
 BATCH_SIZE = 64
 LR = 0.005  # learning rate
+DOWNLOAD_MNIST = False
 N_TEST_IMG = 5
 
-# DatasetFolder
-TRAIN_DATA_PATH = '../xml_files/'
-LOADER = ''
+# Mnist digits dataset
+'''
+train_data = torchvision.datasets.MNIST(
+    root='./mnist/',
+    train=True,                                     # this is training data
+    transform=torchvision.transforms.ToTensor(),    # Converts a PIL.Image or numpy.ndarray to
+                                                    # torch.FloatTensor of shape (C x H x W) and normalize in the range [0.0, 1.0]
+    download=DOWNLOAD_MNIST,                        # download it if you don't have it
+)
+'''
 
 # Autoencoder does not have labels
-train_data, _ = load_video_data_labels(7, 2, 32)
-# train_data = train_data[:, :-20, 15:]
-
+train_data, _ = load_video_data_labels(7, 2)
 
 # Transform to tensor
 train_data_tensor = torch.from_numpy(train_data)
@@ -79,7 +85,7 @@ f, a = plt.subplots(2, N_TEST_IMG, figsize=(5, 2))
 plt.ion()  # continuously plot
 
 # original data (first row) for viewing
-view_data = train_data_tensor[:N_TEST_IMG].contiguous().view(-1, train_data.shape[1] * train_data.shape[2]).type(
+view_data = train_data_tensor[:N_TEST_IMG].view(-1, train_data.shape[1] * train_data.shape[2]).type(
     torch.FloatTensor) / 255.
 for i in range(N_TEST_IMG):
     a[0][i].imshow(np.reshape(view_data.data.numpy()[i], (train_data.shape[1], train_data.shape[2])), cmap='gray')
@@ -92,7 +98,7 @@ for epoch in range(EPOCH):
 
         encoded, decoded = autoencoder(b_x)
 
-        loss = loss_func(decoded, b_y) * 1000 # mean square error
+        loss = loss_func(decoded, b_y)  # mean square error
         optimizer.zero_grad()  # clear gradients for this training step
         loss.backward()  # backpropagation, compute gradients
         optimizer.step()  # apply gradients
