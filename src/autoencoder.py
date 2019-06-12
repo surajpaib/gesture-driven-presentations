@@ -78,7 +78,7 @@ view_data = train_data_tensor[:N_TEST_IMG].contiguous().view(-1, train_data.shap
     torch.FloatTensor) / 255.
 for i in range(N_TEST_IMG):
     a[0][i].imshow(np.reshape(view_data.data.numpy()[i], (train_data.shape[1], train_data.shape[2])), cmap='gray')
-    a[0][i].set_xticks(());
+    a[0][i].set_xticks(())
     a[0][i].set_yticks(())
 
 for epoch in range(EPOCH):
