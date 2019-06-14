@@ -1,11 +1,3 @@
-"""
-View more, visit my tutorial page: https://morvanzhou.github.io/tutorials/
-My Youtube Channel: https://www.youtube.com/user/MorvanZhou
-Dependencies:
-torch: 0.4
-matplotlib
-numpy
-"""
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -21,19 +13,21 @@ from src.load_data import *
 EPOCH = 10
 BATCH_SIZE = 64
 LR = 0.005  # learning rate
-N_TEST_IMG = 5
+N_TEST_IMG = 10
+LATENT_SPACE = 20
 
 # Autoencoder does not have labels
-train_data, _ = load_video_data_labels(7, 2, 32)
+train_data, train_labels = load_video_data_labels(7, 2, 32)
+np.random.shuffle(train_data)
 # train_data = train_data[:, :-20, 15:]
 
 
 # Transform to tensor
 train_data_tensor = torch.from_numpy(train_data)
-# train_labels_tensor = torch.from_numpy(train_labels)
+train_labels_tensor = torch.from_numpy(train_labels)
 
 # Data Loader for easy mini-batch return in training, load the Dataset from the numpy arrays
-my_dataset = utils.TensorDataset(train_data_tensor, train_data_tensor)  # create your Dataset
+my_dataset = utils.TensorDataset(train_data_tensor, train_labels_tensor)  # create your Dataset
 train_loader = utils.DataLoader(my_dataset)  # transform Dataset into a Dataloader
 
 
@@ -42,19 +36,17 @@ class AutoEncoder(nn.Module):
         super(AutoEncoder, self).__init__()
 
         self.encoder = nn.Sequential(
-            nn.Linear(train_data.shape[1] * train_data.shape[2], 128),
+            nn.Linear(train_data.shape[1] * train_data.shape[2], latent_space_dim),
             nn.Tanh(),
-            nn.Linear(128, 64),
-            nn.Tanh(),
-            nn.Linear(64, latent_space_dim),
+            # nn.Linear(64, latent_space_dim),
         )
 
         self.decoder = nn.Sequential(
-            nn.Linear(latent_space_dim, 64),
-            nn.Tanh(),
-            nn.Linear(64, 128),
-            nn.Tanh(),
-            nn.Linear(128, train_data.shape[1] * train_data.shape[2]),
+            # nn.Linear(latent_space_dim, 64),
+            # nn.Tanh(),
+            # nn.Linear(64, 128),
+            # nn.Tanh(),
+            nn.Linear(latent_space_dim, train_data.shape[1] * train_data.shape[2]),
             nn.Sigmoid(),  # compress to a range (0, 1)
         )
 
@@ -64,7 +56,7 @@ class AutoEncoder(nn.Module):
         return encoded, decoded
 
 
-autoencoder = AutoEncoder(10)
+autoencoder = AutoEncoder(LATENT_SPACE)
 
 optimizer = torch.optim.Adam(autoencoder.parameters(), lr=LR)
 loss_func = nn.MSELoss()

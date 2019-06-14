@@ -2,6 +2,7 @@ import os
 import pickle
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 
 from video_data import VideoData
@@ -25,6 +26,11 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
                 labels.append(label)
             if matrix.shape[0] < min_data:
                 min_data = matrix.shape[0]
+
+            if label == 2:
+                plt.imshow(matrix[2], cmap='gray')
+                plt.title(file_path)
+                plt.show()
         print(folder, "folder done. Label =", label)
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
@@ -54,15 +60,17 @@ def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=3
 
     return video_data, video_labels
 
+
 # print('CUDA is' + (' ' if torch.cuda.is_available() else ' not ') + 'available')
-# data, labels = create_video_data_label(7, 2)
+data, labels = create_video_data_labels(7, 2, 32)
+
 # print("Data shape", data.shape)
 # print("labels shape", labels.shape)
-#
-# import matplotlib.pyplot as plt
-# for i in range(len(labels)):
-#     plt.imshow(data[i], cmap='gray')
-#     plt.title("label = " + str(labels[i]))
-#     plt.figure()
-#     if i % 300 == 0:
-#         plt.show()
+indexes = [i for i in range(len(labels))]
+np.random.shuffle(indexes)
+
+for i in indexes:
+    plt.imshow(data[i], cmap='gray')
+    plt.title("label = " + str(labels[i]))
+    plt.figure()
+    plt.show()
