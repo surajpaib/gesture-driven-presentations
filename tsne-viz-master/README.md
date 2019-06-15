@@ -36,17 +36,12 @@ pip install -r requirements.txt
 ## Usage
 
 <span style="color:red">**Example Command**</span>
+Go on the folder tsne-viz-master and run:
+```
+python main.py --num_samples=3000 --num_dimensions=2 --compute_embeddings=False --with_images=False
+```
 
-```
-python main.py --num_samples=5000 --num_dimensions=2 --compute_embeddings=False --with_images=False
-```
-
-This will plot a 2D t-SNE plot with no image overlay. Note that the example code uses the [Fashion-MNIST](https://github.com/zalandoresearch/fashion-mnist) dataset which you can download by running: 
-
-```
-chmod +x download_data.sh
-./download_data.sh
-```
+This will plot a 2D t-SNE plot with no image overlay. The loader is in load_data (in src folder) and it is the function create_video_data_labels(7, 2, 32). 
 
 You'll only need to **modify** the `load_data` method if you're planning on using your own dataset. Make sure it returns a set of numpy arrays: for example, if embedding grasycale images, you'll want to return an array of images and their associated labels as follows
 
