@@ -9,13 +9,17 @@ from video_data import VideoData
 
 
 def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size, kernel_size=2):
-    xml_folder = '../xml_files'
+    xml_folder = '../processing_trial'
     data = []
     labels = []
     min_data = 99
     for label, folder in enumerate(os.listdir(xml_folder)):
-        # print('folder', folder)
+        print('folder', folder)
+        if folder == '.DS_Store':
+            continue
         for file in os.listdir(xml_folder + '/' + folder):
+            if file == '.DS_Store':
+                continue
             file_path = xml_folder + '/' + folder + '/' + file
             video_data = VideoData(interpolations_frames=interpolation_frames, noise_frames=noise_parameters)
             video_data.load_xml_file(file_path)
@@ -27,10 +31,10 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
             if matrix.shape[0] < min_data:
                 min_data = matrix.shape[0]
 
-            if label == 2:
-                plt.imshow(matrix[2], cmap='gray')
-                plt.title(file_path)
-                plt.show()
+            #if label == 4:
+            #    plt.imshow(matrix[2], cmap='gray')
+            #    plt.title(file_path)
+            #    plt.show()
         print(folder, "folder done. Label =", label)
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
@@ -62,15 +66,15 @@ def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=3
 
 
 # print('CUDA is' + (' ' if torch.cuda.is_available() else ' not ') + 'available')
-data, labels = create_video_data_labels(7, 2, 32)
+#data, labels = create_video_data_labels(7, 2, 64)
 
-# print("Data shape", data.shape)
+#print("Data shape", data.shape)
 # print("labels shape", labels.shape)
-indexes = [i for i in range(len(labels))]
-np.random.shuffle(indexes)
+#indexes = [i for i in range(len(labels))]
+#np.random.shuffle(indexes)
 
-for i in indexes:
-    plt.imshow(data[i], cmap='gray')
-    plt.title("label = " + str(labels[i]))
-    plt.figure()
-    plt.show()
+#for i in indexes:
+    #plt.imshow(data[i], cmap='gray')
+   # plt.title("label = " + str(labels[i]))
+    #plt.figure()
+    #plt.show()

@@ -56,7 +56,6 @@ class VideoData:
             if i != self.noise_frames:
                 matrix = matrix_list[i - self.noise_frames - 1]
 
-            self.prep_mat(matrix)
             for k in range(len(frame.keypoints[2:8])):
                 if (len(last_keypoint_list)) <= k:
                     last_keypoint_list.append([])
@@ -67,19 +66,19 @@ class VideoData:
 
                 keypoint = (frame.keypoints[2:8])[k]
                 if keypoint[2] > 0.5:
-                    key_x = int(keypoint[0] * MATRIX_SIZE / 4 + MATRIX_SIZE / 2)
-                    key_y = int(keypoint[1] * MATRIX_SIZE / 4 + MATRIX_SIZE / 8)
+                    key_x = int(keypoint[0] * MATRIX_SIZE / 8 + MATRIX_SIZE / 2)
+                    key_y = int(keypoint[1] * MATRIX_SIZE / 8 + MATRIX_SIZE / 8)
                     matrix[key_y, key_x] = 1
                     last_keypoints.append([key_x, key_y])
                 else:
                     if len(last_keypoints) > 0:
                         last_keypoints.append(last_keypoints[-1])
                 if len(last_keypoints) > 1:
-                    # last_keypoints.sort(key=sort_func)
+                    #last_keypoints.sort(key=sort_func)
                     last_keypoints_x = [p[0] for p in last_keypoints]
                     last_keypoints_y = [p[1] for p in last_keypoints]
-                    # if k == 5:
-                    #     print(last_keypoints)
+                    #if k == 5:
+                    #    print(last_keypoints)
                     f1 = interp1d(last_keypoints_x, last_keypoints_y, kind='linear')
                     steps = max(last_keypoints_x) - min(last_keypoints_x) + 1
                     step_size = 0.75 / steps
@@ -91,6 +90,7 @@ class VideoData:
                         matrix[int(f1(x)), x] = 0.25 + step * step_size
                         step += 1
                 last_keypoint_list[k] = last_keypoints
+            self.prep_mat(matrix)
             matrix_list.append(matrix.copy())
 
         # -2 because first index is 0
