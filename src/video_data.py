@@ -56,6 +56,7 @@ class VideoData:
             if i != self.noise_frames:
                 matrix = matrix_list[i - self.noise_frames - 1]
 
+            self.prep_mat(matrix)
             for k in range(len(frame.keypoints[2:8])):
                 if (len(last_keypoint_list)) <= k:
                     last_keypoint_list.append([])
@@ -90,7 +91,6 @@ class VideoData:
                         matrix[int(f1(x)), x] = 0.25 + step * step_size
                         step += 1
                 last_keypoint_list[k] = last_keypoints
-            self.prep_mat(matrix)
             matrix_list.append(matrix.copy())
 
         # -2 because first index is 0
