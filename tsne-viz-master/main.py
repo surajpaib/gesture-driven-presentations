@@ -21,7 +21,7 @@ def main(config):
     prepare_dirs(config)
 
     # load data
-    X_train, y_train = create_video_data_labels(7, 2, 32)
+    X_train, y_train = create_video_data_labels(7, 2, 64)
 
     # shuffle dataset
     if config.shuffle:

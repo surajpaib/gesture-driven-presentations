@@ -13,11 +13,11 @@ from src.load_data import *
 EPOCH = 10
 BATCH_SIZE = 64
 LR = 0.005  # learning rate
-N_TEST_IMG = 10
+N_TEST_IMG = 50
 LATENT_SPACE = 20
 
 # Autoencoder does not have labels
-train_data, train_labels = load_video_data_labels(7, 2, 32)
+train_data, train_labels = load_video_data_labels(7, 2, 16)
 np.random.shuffle(train_data)
 # train_data = train_data[:, :-20, 15:]
 

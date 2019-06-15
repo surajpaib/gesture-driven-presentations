@@ -24,6 +24,13 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
             video_data = VideoData(interpolations_frames=interpolation_frames, noise_frames=noise_parameters)
             video_data.load_xml_file(file_path)
             matrix = video_data.generate_matrices(matrix_size)
+            #check if the matrix is black
+            try:
+                if np.amax(matrix) <= 0.0:
+                    continue
+            except ValueError:
+                continue
+
             for frame in matrix:
                 kernel = np.ones((kernel_size, kernel_size), np.uint8)
                 data.append(cv2.dilate(frame, kernel, iterations=1))
@@ -32,9 +39,9 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
                 min_data = matrix.shape[0]
 
             #if label == 4:
-            #    plt.imshow(matrix[2], cmap='gray')
-            #    plt.title(file_path)
-            #    plt.show()
+            #   plt.imshow(matrix[2], cmap='gray')
+            #   plt.title(file_path)
+            #   plt.show()
         print(folder, "folder done. Label =", label)
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
@@ -66,15 +73,15 @@ def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=3
 
 
 # print('CUDA is' + (' ' if torch.cuda.is_available() else ' not ') + 'available')
-#data, labels = create_video_data_labels(7, 2, 64)
+data, labels = create_video_data_labels(7, 2, 64)
 
 #print("Data shape", data.shape)
 # print("labels shape", labels.shape)
-#indexes = [i for i in range(len(labels))]
-#np.random.shuffle(indexes)
+indexes = [i for i in range(len(labels))]
+np.random.shuffle(indexes)
 
-#for i in indexes:
-    #plt.imshow(data[i], cmap='gray')
-   # plt.title("label = " + str(labels[i]))
-    #plt.figure()
-    #plt.show()
+for i in indexes:
+    plt.imshow(data[i], cmap='gray')
+    plt.title("label = " + str(labels[i]))
+    plt.figure()
+    plt.show()

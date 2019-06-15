@@ -91,6 +91,7 @@ class VideoData:
                         matrix[int(f1(x)), x] = 0.25 + step * step_size
                         step += 1
                 last_keypoint_list[k] = last_keypoints
+
             matrix_list.append(matrix.copy())
 
         # -2 because first index is 0
