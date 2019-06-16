@@ -38,10 +38,10 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
             if matrix.shape[0] < min_data:
                 min_data = matrix.shape[0]
 
-            #if label == 4:
-            #   plt.imshow(matrix[2], cmap='gray')
-            #   plt.title(file_path)
-            #   plt.show()
+            if folder == 'Lprev' and len(data)%100==0:
+               plt.imshow(matrix[2], cmap='gray')
+               plt.title(file_path)
+               plt.show()
         print(folder, "folder done. Label =", label)
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
