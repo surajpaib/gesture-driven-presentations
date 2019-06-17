@@ -49,7 +49,7 @@ class VideoData:
         MATRIX_SIZE = matrix_size
         matrix_list = []
         last_keypoint_list = []
-        for i in range(self.noise_frames, len(self._frames) - self.noise_frames * 2 - 1):
+        for i in range(self.noise_frames, len(self._frames) - self.noise_frames - 1):
             frame = self._frames[i]
             matrix = np.zeros((MATRIX_SIZE, MATRIX_SIZE))
 
@@ -61,35 +61,46 @@ class VideoData:
                 if (len(last_keypoint_list)) <= k:
                     last_keypoint_list.append([])
 
+                # Take the past 3 values for this current keypoint.
                 last_keypoints = last_keypoint_list[k]
-                if len(last_keypoints) > 3:
+                if len(last_keypoints) > 3:     # we interpolate based on the 4 frames, so only keep the last 3 values.
                     last_keypoints.pop(0)
 
+                # If we have a high enough confidence, add the current value. Else, duplicate the previous one.
                 keypoint = (frame.keypoints[2:8])[k]
-                if keypoint[2] > 0.5:
-                    key_x = int(keypoint[0] * MATRIX_SIZE / 4 + MATRIX_SIZE / 2)
-                    key_y = int(keypoint[1] * MATRIX_SIZE / 4 + MATRIX_SIZE / 8)
+                if keypoint[2] > 0.5:           # apply a confidence threshold.
+                    key_x = int(
+                        keypoint[0] * MATRIX_SIZE / 4 + MATRIX_SIZE / 2)
+                    key_y = int(
+                        keypoint[1] * MATRIX_SIZE / 4 + MATRIX_SIZE / 8)
                     matrix[key_y, key_x] = 1
                     last_keypoints.append([key_x, key_y])
-                else:
+                else:                           # if the confidence threshold isn't met, duplicate the previous value
                     if len(last_keypoints) > 0:
                         last_keypoints.append(last_keypoints[-1])
+                
+                # Interpolate over the previous values.
                 if len(last_keypoints) > 1:
-                    # last_keypoints.sort(key=sort_func)
                     last_keypoints_x = [p[0] for p in last_keypoints]
                     last_keypoints_y = [p[1] for p in last_keypoints]
-                    # if k == 5:
-                    #     print(last_keypoints)
-                    f1 = interp1d(last_keypoints_x, last_keypoints_y, kind='linear')
-                    steps = max(last_keypoints_x) - min(last_keypoints_x) + 1
-                    step_size = 0.75 / steps
+                    f1 = interp1d(last_keypoints_x[-2:],
+                                  last_keypoints_y[-2:], kind='linear')
+                    steps = abs(last_keypoints_x[-1] - last_keypoints_x[-2]) + 1
+                    if steps == 1:
+                        continue
+                    step_size = 0.25 / (steps-1)
                     step = 0
-                    for x in range(min(last_keypoints_x) + 1, max(last_keypoints_x)):
-                        # print(last_keypoints_x)
-                        # print(min(last_keypoints_x))
-                        # print(max(last_keypoints_x))
-                        matrix[int(f1(x)), x] = 0.25 + step * step_size
+
+                    base = last_keypoints_x[-2]
+                    direction = 1
+                    if last_keypoints_x[-2] > last_keypoints_x[-1]:
+                        direction = -1
+
+                    for j in range(steps):
+                        x = base + direction * j
+                        matrix[int(f1(x)), x] = 0.75 + step * step_size
                         step += 1
+
                 last_keypoint_list[k] = last_keypoints
             matrix_list.append(matrix.copy())
 
@@ -100,7 +111,7 @@ class VideoData:
         for x in range(len(frame)):
             for y in range(len(frame[x])):
                 if not frame[x][y] == 0:
-                    frame[x][y] -= 0.25
+                    frame[x][y] -= 0.25             # 0.25 because we are interpolating over 4 frames
                     if frame[x][y] < 0.25:
                         frame[x][y] = 0
 
