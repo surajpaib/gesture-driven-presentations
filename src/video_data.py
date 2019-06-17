@@ -1,3 +1,4 @@
+from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 import matplotlib.pyplot as plt
@@ -123,8 +124,8 @@ class VideoData:
         for x in range(len(frame)):
             for y in range(len(frame[x])):
                 if not frame[x][y] == 0:
-                    frame[x][y] -= 0.25             # 0.25 because we are interpolating over 4 frames
-                    if frame[x][y] < 0.25:
+                    frame[x][y] -= (1 / self.interpolation_frames)             # 0.25 because we are interpolating over 4 frames
+                    if frame[x][y] < (1 / self.interpolation_frames):          
                         frame[x][y] = 0
 
 
