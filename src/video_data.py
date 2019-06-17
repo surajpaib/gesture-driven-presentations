@@ -128,6 +128,23 @@ class VideoData:
                     if frame[x][y] < (1 / self.interpolation_frames):          
                         frame[x][y] = 0
 
+def get_final_matrix(interpolation_frames, filename):
+    """
+    Helper function to make code a bit cleaner.
+    """
+
+    data = VideoData(interpolation_frames)
+    data.load_xml_file(filename)
+    return data.get_flattened_matrix()
+
+def get_matrix_list(interpolation_frames, filename):
+    """
+    Helper function to make code a bit cleaner.
+    """
+
+    data = VideoData(interpolation_frames)
+    data.load_xml_file(filename)
+    return data.get_matrices()
 
 if __name__ == "__main__":
     data = VideoData(4)
