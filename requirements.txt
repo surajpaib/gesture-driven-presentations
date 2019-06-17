@@ -12,3 +12,5 @@ scipy==1.2.1
 sklearn==0.0
 opencv-python==3.4.3.18
 imutils
+torch
+numpy
