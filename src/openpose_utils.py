@@ -80,6 +80,19 @@ def get_hand_rectangles_from_datum(datum: op.Datum) -> Optional[List[op.Rectangl
         # No person detected.
         return None
 
+def get_all_keypoints_from_datum(datum: op.Datum)  -> Optional[List[List[float]]]:
+    """
+    Returns all keypoints
+    Each returned keypoint is a list of three values: x, y and confidence.
+    """
+
+    poseKeypoints = datum.poseKeypoints
+    if (poseKeypoints.size < 3):
+        print("something wrong")
+        # Something went wrong: probably OpenPose did not detect any person.
+        return None
+
+    return poseKeypoints[0]
 
 def get_keypoints_from_datum(datum: op.Datum, keypoints: List[str]) -> Optional[List[List[float]]]:
     """
