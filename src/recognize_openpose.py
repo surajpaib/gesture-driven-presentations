@@ -8,6 +8,10 @@ from sklearn.metrics import pairwise
 from wrappers import PowerpointWrapper, PresentationWrapper
 from openpose_utils import *
 
+from frame_data import FrameData
+from video_data import VideoData
+from correlation_classifier import CorrelationClassifier
+
 current_milli_time = lambda: int(round(time.time() * 1000))
 
 
@@ -51,6 +55,7 @@ def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarra
     pass
 
 
+
 # -------------------------------------------------------------------------------
 # Main function
 # -------------------------------------------------------------------------------
@@ -69,6 +74,12 @@ if __name__ == "__main__":
     r_wrist_x_old = 0
     l_wrist_x_old = 0
 
+    # Used to automatically interpolate previous frames.
+    video_data = VideoData(4, confidence_threshold=0.3)
+
+    # Correlation-based "classifier" initialisation.
+    correlation_classifier = CorrelationClassifier("C:\\Users\\Razvan\\Desktop\\gesture-driven-presentations\\dataset")
+
     # Keep looping, until interrupted by a Q keypress.
     while True:
         # Measure frame time.
@@ -84,7 +95,7 @@ if __name__ == "__main__":
         datum = process_image(frame, opWrapper)
 
         # Get some useful values from the Datum object.
-        keypoints = get_keypoints_from_datum(datum, ["RWrist", "LWrist"])
+        keypoints = get_keypoints_from_datum(datum, ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"])
         hand_rectangles = get_hand_rectangles_from_datum(datum)
 
         if keypoints is not None:
@@ -95,6 +106,10 @@ if __name__ == "__main__":
             # Now get the last matrix of VideoData (which should be the last 4 frames, interpolated)
             interpolated_frame = video_data.get_newest_matrix()
             cv2.imshow("Interpolated frame", cv2.resize(interpolated_frame, (640, 640)))
+
+            # Get prediction from cross-correlation classifier? TODO: make it faster!
+            # label, distance = correlation_classifier.classify(interpolated_frame)
+            # print(label, distance)
 
         if keypoints is not None:
         # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
