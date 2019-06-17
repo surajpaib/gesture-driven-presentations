@@ -102,7 +102,6 @@ def get_keypoints_from_datum(datum: op.Datum, keypoints: List[str]) -> Optional[
     """
 
     poseKeypoints = datum.poseKeypoints
-    print(poseKeypoints)
     if (poseKeypoints.size < 3):
         # Something went wrong: probably OpenPose did not detect any person.
         return None

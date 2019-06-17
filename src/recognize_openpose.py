@@ -87,6 +87,16 @@ if __name__ == "__main__":
         keypoints = get_keypoints_from_datum(datum, ["RWrist", "LWrist"])
         hand_rectangles = get_hand_rectangles_from_datum(datum)
 
+        if keypoints is not None:
+            # Build a FrameData object and add it to the VideoData to get the interpolation of the previous frames.
+            frame_data = FrameData.from_keypoints(keypoints)
+            video_data.add_frame(frame_data)
+
+            # Now get the last matrix of VideoData (which should be the last 4 frames, interpolated)
+            interpolated_frame = video_data.get_newest_matrix()
+            cv2.imshow("Interpolated frame", cv2.resize(interpolated_frame, (640, 640)))
+
+        if keypoints is not None:
         # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
         if hand_rectangles:
             left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
