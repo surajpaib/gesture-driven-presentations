@@ -17,9 +17,9 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
         # print('folder', folder)
         for file in os.listdir(xml_folder + '/' + folder):
             file_path = xml_folder + '/' + folder + '/' + file
-            video_data = VideoData(interpolations_frames=interpolation_frames, noise_frames=noise_parameters)
+            video_data = VideoData(interpolations_frames=interpolation_frames, noise_frames=noise_parameters, matrix_size=matrix_size)
             video_data.load_xml_file(file_path)
-            matrix = video_data.generate_matrices(matrix_size)
+            matrix = video_data.get_matrices()
             for frame in matrix:
                 kernel = np.ones((kernel_size, kernel_size), np.uint8)
                 data.append(cv2.dilate(frame, kernel, iterations=1))
