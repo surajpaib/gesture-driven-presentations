@@ -15,7 +15,7 @@ class VideoData:
         self._framerate = 0
 
         self._matrix_list = []
-        self._matrix_size = 64
+        self._matrix_size = matrix_size
         
         self._last_keypoint_list = []
         while len(self._last_keypoint_list) < 6:        # we currently use 6 keypoints
@@ -45,15 +45,13 @@ class VideoData:
         for frame_data in frame_list[self.noise_frames : -self.noise_frames]:
             self.add_frame(frame_data)
 
-    def add_frame(self, frame_data):
-        # Add frame data to the internal list.
-        self._frames.append(frame_data)
+    def add_frame(self, frame_data: FrameData):
 
         # Initialize the new interpolated matrix with the previous matrix.
         if len(self._matrix_list) > 0:
             matrix = self._matrix_list[-1]
         else:
-            matrix = np.zeros((self._matrix_size, self._matrix_size))
+            matrix = np.zeros((self._matrix_size - 10, self._matrix_size))
         self.prep_mat(matrix)
 
         # Iterate over the interesting keypoints.
@@ -65,40 +63,44 @@ class VideoData:
             if keypoint[2] > self.confidence_threshold:
                 key_x = int(keypoint[0] * self._matrix_size / 6 + self._matrix_size / 2)
                 key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 8)
+                if key_x >= self._matrix_size or key_y >= self._matrix_size:
+                    continue
                 matrix[key_y, key_x] = 1
                 last_keypoints.append([key_x, key_y])
             else:
                 if len(last_keypoints) > 0:
                     last_keypoints.append(last_keypoints[-1])
                 
-                # Interpolate over the previous values.
-                if len(last_keypoints) > 1:
-                    last_keypoints_x = [p[0] for p in last_keypoints]
-                    last_keypoints_y = [p[1] for p in last_keypoints]
-                    f1 = interp1d(last_keypoints_x[-2:], last_keypoints_y[-2:], kind='linear')
+            # Interpolate over the previous values.
+            if len(last_keypoints) > 1:
+                last_keypoints_x = [p[0] for p in last_keypoints]
+                last_keypoints_y = [p[1] for p in last_keypoints]
+                f1 = interp1d(last_keypoints_x[-2:], last_keypoints_y[-2:], kind='linear')
+
+                # Find how many interpolation steps are needed from the last x to the previous x.
+                # Also determine a good step size (so that the values go from 0.75 to 1 linearly).
+                steps = abs(last_keypoints_x[-1] - last_keypoints_x[-2]) + 1
+                if steps == 1:
+                    continue
+                step_size = (1 / self.interpolation_frames) / (steps-1)     # (1 / self.interpolation_frames) gives 0.25 for 4 frames
+                step = 0
     
-                    # Find how many interpolation steps are needed from the last x to the previous x.
-                    # Also determine a good step size (so that the values go from 0.75 to 1 linearly).
-                    steps = abs(last_keypoints_x[-1] - last_keypoints_x[-2]) + 1
-                    if steps == 1:
-                        continue
-                    step_size = (1 / self.interpolation_frames) / (steps-1)     # (1 / self.interpolation_frames) gives 0.25 for 4 frames
-                    step = 0
-    
-                    # Find the direction of the interpolation.
-                    base = last_keypoints_x[-2]
-                    direction = 1
-                    if last_keypoints_x[-2] > last_keypoints_x[-1]:
-                        direction = -1
-    
-                    # Actually perform the interpolation.
-                    for j in range(steps):
-                        x = base + direction * j
-                        matrix[int(f1(x)), x] = (1 - (1 / self.interpolation_frames)) + step * step_size    # (1 - (1 / self.interpolation_frames)) gives 0.75 for 4 frames
-                        step += 1
+                # Find the direction of the interpolation.
+                base = last_keypoints_x[-2]
+                direction = 1
+                if last_keypoints_x[-2] > last_keypoints_x[-1]:
+                    direction = -1
+
+                # Actually perform the interpolation.
+                for j in range(steps):
+                    x = base + direction * j
+                    matrix[int(f1(x)), x] = (1 - (1 / self.interpolation_frames)) + step * step_size    # (1 - (1 / self.interpolation_frames)) gives 0.75 for 4 frames
+                    step += 1
 
             self._last_keypoint_list[k] = last_keypoints
 
+        # Add frame data to the internal list.
+        self._frames.append(frame_data)
         # Add the matrix to the list.
         self._matrix_list.append(matrix.copy())
 
