@@ -7,7 +7,6 @@ from scipy.interpolate import interp1d
 
 from frame_data import FrameData
 
-
 class VideoData:
     def __init__(self, interpolations_frames, noise_frames=1, matrix_size=64, confidence_threshold=0.5):
         self._frames = []
@@ -122,6 +121,12 @@ class VideoData:
     def get_newest_matrix(self):
         return np.float32(self._matrix_list[-1])
 
+    def get_flattened_matrix(self):
+        flattened_matrix = np.zeros((self._matrix_size - 10, self._matrix_size))
+        for matrix in self._matrix_list:
+            flattened_matrix += matrix
+        return flattened_matrix
+
     def prep_mat(self, frame):
         for x in range(len(frame)):
             for y in range(len(frame[x])):
@@ -130,6 +135,23 @@ class VideoData:
                     if frame[x][y] < (1 / self.interpolation_frames):          
                         frame[x][y] = 0
 
+def get_final_matrix(interpolation_frames, filename):
+    """
+    Helper function to make code a bit cleaner.
+    """
+
+    data = VideoData(interpolation_frames)
+    data.load_xml_file(filename)
+    return data.get_flattened_matrix()
+
+def get_matrix_list(interpolation_frames, filename):
+    """
+    Helper function to make code a bit cleaner.
+    """
+
+    data = VideoData(interpolation_frames)
+    data.load_xml_file(filename)
+    return data.get_matrices()
 
 if __name__ == "__main__":
     data = VideoData(4)
