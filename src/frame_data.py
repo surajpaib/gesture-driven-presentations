@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 
-from process_videos import normalize_point
+from process_videos_utils import normalize_point
 
 class FrameData:
     def __init__(self):
