@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.utils.data as utils
@@ -8,17 +7,24 @@ from mpl_toolkits.mplot3d import Axes3D
 from src.load_data import *
 
 # torch.manual_seed(1)    # reproducible
+device = torch.device("cuda")
+print("Using device", device)
 
 # Hyper Parameters
-EPOCH = 10
+EPOCH = 1000
 BATCH_SIZE = 64
 LR = 0.005  # learning rate
 N_TEST_IMG = 10
-LATENT_SPACE = 20
+LATENT_SPACE = 200
 
 # Autoencoder does not have labels
-train_data, train_labels = load_video_data_labels(7, 2, 32)
-np.random.shuffle(train_data)
+train_data, train_labels = create_video_data_labels(7, 2, 32)
+
+# Shuffle both arrays the same way
+p = np.random.permutation(len(train_data))
+train_data, train_labels = train_data[p], train_labels[p]
+
+# np.random.shuffle(train_data)
 # train_data = train_data[:, :-20, 15:]
 
 
@@ -28,25 +34,27 @@ train_labels_tensor = torch.from_numpy(train_labels)
 
 # Data Loader for easy mini-batch return in training, load the Dataset from the numpy arrays
 my_dataset = utils.TensorDataset(train_data_tensor, train_labels_tensor)  # create your Dataset
-train_loader = utils.DataLoader(my_dataset)  # transform Dataset into a Dataloader
+train_loader = utils.DataLoader(my_dataset, batch_size=BATCH_SIZE)  # transform Dataset into a Dataloader
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self, latent_space_dim):
+    def __init__(self):
         super(AutoEncoder, self).__init__()
 
         self.encoder = nn.Sequential(
-            nn.Linear(train_data.shape[1] * train_data.shape[2], latent_space_dim),
-            nn.Tanh(),
-            # nn.Linear(64, latent_space_dim),
+            nn.Linear(train_data.shape[1] * train_data.shape[2], 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, LATENT_SPACE),
         )
 
         self.decoder = nn.Sequential(
-            # nn.Linear(latent_space_dim, 64),
-            # nn.Tanh(),
-            # nn.Linear(64, 128),
-            # nn.Tanh(),
-            nn.Linear(latent_space_dim, train_data.shape[1] * train_data.shape[2]),
+            nn.Linear(LATENT_SPACE, 64),
+            nn.ReLU(),
+            nn.Linear(64, 128),
+            nn.ReLU(),
+            nn.Linear(128, train_data.shape[1] * train_data.shape[2]),
             nn.Sigmoid(),  # compress to a range (0, 1)
         )
 
@@ -56,7 +64,7 @@ class AutoEncoder(nn.Module):
         return encoded, decoded
 
 
-autoencoder = AutoEncoder(LATENT_SPACE)
+autoencoder = AutoEncoder()
 
 optimizer = torch.optim.Adam(autoencoder.parameters(), lr=LR)
 loss_func = nn.MSELoss()
@@ -100,16 +108,16 @@ for epoch in range(EPOCH):
             plt.pause(0.05)
 
 plt.ioff()
-plt.show()
+# plt.show()
 
 # visualize in 3D plot
-view_data = train_data.train_data[:200].view(-1, train_data.shape[1] * train_data.shape[2]).type(
+view_data = train_data_tensor[:200].view(-1, train_data.shape[1] * train_data.shape[2]).type(
     torch.FloatTensor) / 255.
 encoded_data, _ = autoencoder(view_data)
 fig = plt.figure(2)
 ax = Axes3D(fig)
 X, Y, Z = encoded_data.data[:, 0].numpy(), encoded_data.data[:, 1].numpy(), encoded_data.data[:, 2].numpy()
-values = train_data.train_labels[:200].numpy()
+values = train_labels_tensor[:200].numpy()
 for x, y, z, s in zip(X, Y, Z, values):
     c = cm.rainbow(int(255 * s / 9))
     ax.text(x, y, z, s, backgroundcolor=c)

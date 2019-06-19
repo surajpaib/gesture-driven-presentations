@@ -1,4 +1,4 @@
-from __future__ import annotations
+# from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -29,7 +29,7 @@ class FrameData:
             self._keypoints.append(keypoint)
     
     @staticmethod
-    def from_keypoints(keypoints) -> FrameData:
+    def from_keypoints(keypoints):
         """
         NOTE: currently expects keypoints in the following order:
         "Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"
