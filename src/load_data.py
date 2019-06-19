@@ -27,10 +27,10 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
             if matrix.shape[0] < min_data:
                 min_data = matrix.shape[0]
 
-            if label == 2:
-                plt.imshow(matrix[2], cmap='gray')
-                plt.title(file_path)
-                plt.show()
+            # if label == 2:
+            #     plt.imshow(matrix[2], cmap='gray')
+            #     plt.title(file_path)
+            #     plt.show()
         print(folder, "folder done. Label =", label)
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
@@ -62,15 +62,15 @@ def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=3
 
 
 # print('CUDA is' + (' ' if torch.cuda.is_available() else ' not ') + 'available')
-data, labels = create_video_data_labels(7, 2, 32)
-
-# print("Data shape", data.shape)
-# print("labels shape", labels.shape)
-indexes = [i for i in range(len(labels))]
-np.random.shuffle(indexes)
-
-for i in indexes:
-    plt.imshow(data[i], cmap='gray')
-    plt.title("label = " + str(labels[i]))
-    plt.figure()
-    plt.show()
+# data, labels = create_video_data_labels(7, 2, 32)
+#
+# # print("Data shape", data.shape)
+# # print("labels shape", labels.shape)
+# indexes = [i for i in range(len(labels))]
+# np.random.shuffle(indexes)
+#
+# for i in indexes:
+#     plt.imshow(data[i], cmap='gray')
+#     plt.title("label = " + str(labels[i]))
+#     plt.figure()
+#     plt.show()

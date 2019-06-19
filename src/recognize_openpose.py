@@ -79,7 +79,7 @@ if __name__ == "__main__":
     video_data = VideoData(interp_frames, confidence_threshold=0.3)
 
     # Correlation-based "classifier" initialisation.
-    correlation_classifier = CorrelationClassifier("C:\\Users\\Razvan\\Desktop\\gesture-driven-presentations\\dataset", interpolations_frames=interp_frames)
+    correlation_classifier = CorrelationClassifier("..\dataset", interpolations_frames=interp_frames)
 
     # Keep looping, until interrupted by a Q keypress.
     while True:
@@ -113,10 +113,10 @@ if __name__ == "__main__":
             print(label, lowest_distance, highest_magnitude)
 
         if keypoints is not None:
-        # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
-        if hand_rectangles:
-            left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
-            hand_segmentation(left_hand_region, right_hand_region)
+            # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
+            if hand_rectangles:
+                left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
+                hand_segmentation(left_hand_region, right_hand_region)
 
         # Perform gesture recognition on the arm keypoints.
         if keypoints is not None:

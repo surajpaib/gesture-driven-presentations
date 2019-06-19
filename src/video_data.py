@@ -1,4 +1,4 @@
-from __future__ import annotations
+# from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 import matplotlib.pyplot as plt
@@ -22,7 +22,7 @@ class VideoData:
 
         self.noise_frames = noise_frames
         self.interpolation_frames = interpolations_frames
-        self.confidence_threshold = 0.3
+        self.confidence_threshold = confidence_threshold
 
     def get_keypoints_from_frame(self, frame_number):
         return (self._frames[frame_number]).keypoints
