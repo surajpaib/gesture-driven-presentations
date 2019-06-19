@@ -1,6 +1,8 @@
 from __future__ import annotations
 import os
 
+import cv2
+
 import numpy as np
 from scipy import signal
 
@@ -42,9 +44,10 @@ class CorrelationClassifier:
                 if filename.endswith('.xml'):
                     video_data = VideoData(self.interpolation_frames, noise_frames=self.noise_frames, \
                         matrix_size=self.matrix_size, confidence_threshold=self.confidence_threshold)
+                    video_data.load_xml_file(os.path.join(gesture_path, filename))
                     self._dataset[label].append(video_data)
                     self._flattened_matrices[label].append(video_data.get_flattened_matrix())
-
+                    
     def classify(self, runtime_matrix):
         """
         For now, tries to classify the given runtime matrix by performing the cross-correlation
@@ -53,21 +56,40 @@ class CorrelationClassifier:
         """
 
         lowest_distance = np.inf
-        lowest_label = None
+        lowest_distance_label = None
+
+        highest_magnitude = 0
+        highest_magnitude_label = None
 
         for label in self._gesture_labels:
             flattened_matrices = self._flattened_matrices[label]
             peak_center_distances = []
+            peak_magnitudes = []
             for other_matrix in flattened_matrices:
-                corr = signal.correlate2d(runtime_matrix, other_matrix)
-                # TODO: use fft to somehow speed this up. R_xy = ifft(fft(x,N) * conj(fft(y,N))) ??
+                corr = signal.fftconvolve(runtime_matrix, other_matrix[::-1, ::-1])
+
+                # Find the peak of the cross-correlation.
                 peak_index = np.unravel_index(np.argmax(corr, axis=None), corr.shape)
+
+                # Compute the distance to the center.
                 distance = np.sqrt(np.square(peak_index[0] - 62) + np.square(peak_index[1] - 62))
                 peak_center_distances.append(distance)
+
+                # Also consider the magnitude of the peak.
+                magnitude = corr[peak_index]
+                peak_magnitudes.append(magnitude)
 
             avg_distance = np.average(peak_center_distances)
             if avg_distance < lowest_distance:
                 lowest_distance = avg_distance
-                lowest_label = label
+                lowest_distance_label = label
 
-        return lowest_label, lowest_distance
+            avg_magnitude = np.average(peak_magnitudes)
+            if avg_magnitude > highest_magnitude:
+                highest_magnitude = avg_magnitude
+                highest_magnitude_label = label
+
+        if lowest_distance_label == highest_magnitude_label and lowest_distance < 10 and highest_magnitude > 50:
+            return lowest_distance_label, lowest_distance, highest_magnitude
+        else:
+            return None, lowest_distance, highest_magnitude

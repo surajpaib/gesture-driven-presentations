@@ -88,7 +88,7 @@ if __name__ == "__main__":
         # Get the current frame, resize and flip it.
         (grabbed, frame) = camera.read()
         frame = imutils.resize(frame, width=700)
-        frame_flipped = cv2.flip(frame, 1)
+        # frame_flipped = cv2.flip(frame, 1)
         (height, width) = frame.shape[:2]
 
         # Pass the frame through OpenPose.
