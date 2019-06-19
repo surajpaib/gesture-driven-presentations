@@ -13,6 +13,7 @@ from pathlib import Path
 
 from openpose_utils import *
 from keypoints import KEYPOINTS_DICT
+from process_videos_utils import normalize_point
 
 openpose_initialized = False
 opWrapper = None
@@ -30,13 +31,7 @@ def create_xml_for_keypoint(id,keypoint, avg_dist, avg_point):
     conf_node.text = str(keypoint[2])
     return keypoint_node
 
-def normalize_point(point_to_normalize, avg_dist, avg_point):
-        nx = point_to_normalize[0] - avg_point[0]
-        nx = nx / avg_dist
-        ny = point_to_normalize[1] - avg_point[1]
-        ny = ny / avg_dist
 
-        return [nx,ny]
 
 def get_frame_list_of_video(video_path):
     cap = cv2.VideoCapture(video_path)
@@ -84,6 +79,9 @@ def process_video(video_path, label, output_path,output_path_7, update=False):
         datum = process_image(input_frame, opWrapper)
         # Get some useful values from the Datum object.
         keypoints = get_all_keypoints_from_datum(datum)
+        if keypoints is None:
+            continue
+
         r_shoulder = keypoints[KEYPOINTS_DICT["RShoulder"]]
         l_shoulder = keypoints[KEYPOINTS_DICT["LShoulder"]]
         avg_dist = np.sqrt((r_shoulder[0] - l_shoulder[0])**2 + (r_shoulder[1] - l_shoulder[1])**2)
