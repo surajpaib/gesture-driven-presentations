@@ -112,3 +112,7 @@ openpose/
 videos/
 videos_output/
 src/data/
+src/video_data.py
+dataset/
+xml_files/
+video_data_models/
