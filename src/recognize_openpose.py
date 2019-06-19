@@ -75,10 +75,11 @@ if __name__ == "__main__":
     l_wrist_x_old = 0
 
     # Used to automatically interpolate previous frames.
-    video_data = VideoData(4, confidence_threshold=0.3)
+    interp_frames = 15
+    video_data = VideoData(interp_frames, confidence_threshold=0.3)
 
     # Correlation-based "classifier" initialisation.
-    correlation_classifier = CorrelationClassifier("C:\\Users\\Razvan\\Desktop\\gesture-driven-presentations\\dataset")
+    correlation_classifier = CorrelationClassifier("C:\\Users\\Razvan\\Desktop\\gesture-driven-presentations\\dataset", interpolations_frames=interp_frames)
 
     # Keep looping, until interrupted by a Q keypress.
     while True:
@@ -95,7 +96,7 @@ if __name__ == "__main__":
         datum = process_image(frame, opWrapper)
 
         # Get some useful values from the Datum object.
-        keypoints = get_keypoints_from_datum(datum, ["RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"])
+        keypoints = get_keypoints_from_datum(datum, ["Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"])
         hand_rectangles = get_hand_rectangles_from_datum(datum)
 
         if keypoints is not None:
@@ -108,8 +109,8 @@ if __name__ == "__main__":
             cv2.imshow("Interpolated frame", cv2.resize(interpolated_frame, (640, 640)))
 
             # Get prediction from cross-correlation classifier? TODO: make it faster!
-            # label, distance = correlation_classifier.classify(interpolated_frame)
-            # print(label, distance)
+            label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
+            print(label, lowest_distance, highest_magnitude)
 
         if keypoints is not None:
         # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
