@@ -32,14 +32,14 @@ class FrameData:
     def from_keypoints(keypoints) -> FrameData:
         """
         NOTE: currently expects keypoints in the following order:
-        "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"
+        "Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"
         """
 
         frame_data = FrameData()
 
         # Get the shoulder distance and the middle point between the shoulders.
-        r_shoulder = keypoints[0]
-        l_shoulder = keypoints[3]
+        r_shoulder = keypoints[2]
+        l_shoulder = keypoints[5]
         frame_data._avg_dist = np.sqrt((r_shoulder[0] - l_shoulder[0])**2 + (r_shoulder[1] - l_shoulder[1])**2)
         frame_data._avg_point = [(r_shoulder[0] + l_shoulder[0])/2, (r_shoulder[1] + l_shoulder[1])/2]
 
