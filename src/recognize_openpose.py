@@ -1,16 +1,13 @@
-import cv2
+from typing import Tuple
+
 import imutils
-import numpy as np
-import time
-from typing import List, Tuple
-from sklearn.metrics import pairwise
 
-from wrappers import PowerpointWrapper, PresentationWrapper
-from openpose_utils import *
-
-from frame_data import FrameData
-from video_data import VideoData
+from autoencoder_new import *
 from correlation_classifier import CorrelationClassifier
+from frame_data import FrameData
+from openpose_utils import *
+from video_data import VideoData
+from wrappers import PowerpointWrapper
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -55,7 +52,6 @@ def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarra
     pass
 
 
-
 # -------------------------------------------------------------------------------
 # Main function
 # -------------------------------------------------------------------------------
@@ -76,10 +72,17 @@ if __name__ == "__main__":
 
     # Used to automatically interpolate previous frames.
     interp_frames = 15
-    video_data = VideoData(interp_frames, confidence_threshold=0.3)
+    img_size = 32
+    video_data = VideoData(interp_frames, confidence_threshold=0.3, matrix_size=img_size)
 
     # Correlation-based "classifier" initialisation.
     correlation_classifier = CorrelationClassifier("..\dataset", interpolations_frames=interp_frames)
+
+    # train_model(32)
+    autoencoder = Autoencoder(img_size * (img_size - 10))
+
+    # autoencoder.train()
+    autoencoder.load_state()
 
     # Keep looping, until interrupted by a Q keypress.
     while True:
@@ -96,7 +99,9 @@ if __name__ == "__main__":
         datum = process_image(frame, opWrapper)
 
         # Get some useful values from the Datum object.
-        keypoints = get_keypoints_from_datum(datum, ["Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"])
+        keypoints = get_keypoints_from_datum(datum,
+                                             ["Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow",
+                                              "LWrist"])
         hand_rectangles = get_hand_rectangles_from_datum(datum)
 
         if keypoints is not None:
@@ -178,6 +183,16 @@ if __name__ == "__main__":
         keypress = cv2.waitKey(1) & 0xFF
         if keypress == ord("q"):
             break
+
+        # Call the autoencoder
+        interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
+        decoded = autoencoder.forward(interpolated_frame_tensor)
+        mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
+            axis=None)
+        if mse_error > 0.01:
+            print("BIG ERROR", mse_error)
+        else:
+            print("SMALL ERROR", mse_error)
 
 # Clean up.
 camera.release()

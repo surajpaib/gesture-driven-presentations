@@ -1,12 +1,11 @@
 # from __future__ import annotations
 import os
 
-import cv2
-
 import numpy as np
 from scipy import signal
 
 from video_data import VideoData
+
 
 class CorrelationClassifier:
     def __init__(self, dataset_path, interpolations_frames=4, noise_frames=2, matrix_size=64, confidence_threshold=0.5):
@@ -42,12 +41,13 @@ class CorrelationClassifier:
             gesture_path = os.path.join(dataset_path, label)
             for filename in os.listdir(gesture_path):
                 if filename.endswith('.xml'):
-                    video_data = VideoData(self.interpolation_frames, noise_frames=self.noise_frames, \
-                        matrix_size=self.matrix_size, confidence_threshold=self.confidence_threshold)
+                    video_data = VideoData(self.interpolation_frames, matrix_size=self.matrix_size,
+                                           noise_frames=self.noise_frames,
+                                           confidence_threshold=self.confidence_threshold)
                     video_data.load_xml_file(os.path.join(gesture_path, filename))
                     self._dataset[label].append(video_data)
                     self._flattened_matrices[label].append(video_data.get_flattened_matrix())
-                    
+
     def classify(self, runtime_matrix):
         """
         For now, tries to classify the given runtime matrix by performing the cross-correlation

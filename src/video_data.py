@@ -8,7 +8,7 @@ from scipy.interpolate import interp1d
 from frame_data import FrameData
 
 class VideoData:
-    def __init__(self, interpolations_frames, noise_frames=1, matrix_size=64, confidence_threshold=0.5):
+    def __init__(self, interpolations_frames, matrix_size, noise_frames=1, confidence_threshold=0.5):
         self._frames = []
         self._label = ""
         self._framerate = 0
