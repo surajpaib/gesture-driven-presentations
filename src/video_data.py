@@ -122,7 +122,7 @@ class VideoData:
         return np.float32(self._matrix_list[-1])
 
     def get_flattened_matrix(self):
-        flattened_matrix = np.zeros((self._matrix_size, self._matrix_size))
+        flattened_matrix = np.zeros((self._matrix_size - 10, self._matrix_size))
         for matrix in self._matrix_list:
             flattened_matrix += matrix
         return flattened_matrix
