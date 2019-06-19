@@ -113,10 +113,10 @@ if __name__ == "__main__":
             print(label, lowest_distance, highest_magnitude)
 
         if keypoints is not None:
-        # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
-        if hand_rectangles:
-            left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
-            hand_segmentation(left_hand_region, right_hand_region)
+            # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
+            if hand_rectangles:
+                left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
+                hand_segmentation(left_hand_region, right_hand_region)
 
         # Perform gesture recognition on the arm keypoints.
         if keypoints is not None:
