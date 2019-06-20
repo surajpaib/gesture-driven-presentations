@@ -9,7 +9,7 @@ from video_data import VideoData
 
 
 def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size, kernel_size=2):
-    xml_folder = '../xml_files'
+    xml_folder = '../xml_files/rodrigo'
     data = []
     labels = []
     min_data = 99
