@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 
 from video_processing.process_videos_utils import normalize_point
+from video_processing.keypoints import KEYPOINTS_DICT
 
 class FrameData:
     def __init__(self):
@@ -31,15 +32,14 @@ class FrameData:
     @staticmethod
     def from_keypoints(keypoints):
         """
-        NOTE: currently expects keypoints in the following order:
-        "Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow", "LWrist"
+        Expects all 18 keypoints that we use.
         """
 
         frame_data = FrameData()
 
         # Get the shoulder distance and the middle point between the shoulders.
-        r_shoulder = keypoints[2]
-        l_shoulder = keypoints[5]
+        r_shoulder = keypoints[KEYPOINTS_DICT["RShoulder"]]
+        l_shoulder = keypoints[KEYPOINTS_DICT["LShoulder"]]
         frame_data._avg_dist = np.sqrt((r_shoulder[0] - l_shoulder[0])**2 + (r_shoulder[1] - l_shoulder[1])**2)
         frame_data._avg_point = [(r_shoulder[0] + l_shoulder[0])/2, (r_shoulder[1] + l_shoulder[1])/2]
 
