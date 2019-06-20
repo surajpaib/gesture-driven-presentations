@@ -103,5 +103,8 @@ def train_model(img_size=32, batch_size=32):
     model.save_state()
     return model
 
+def main():
+    train_model()
 
-# train_model()
+if __name__== "__main__":
+    main()
