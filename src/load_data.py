@@ -69,18 +69,18 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
 
-def data_augmentation(data, label):
+def data_augmentation(data, label, file):
     p = Augmentor.Pipeline(data)
     p.zoom(probability=0.5, min_factor=1.1, max_factor=1.3)
     p.zoom_random(probability=0.5, percentage_area=0.2)
     p.random_distortion(probability=0.6, grid_width=4, grid_height=4, magnitude=8)
     augmented_data, label = p.sample(50)
     #for index in range(len)
-    #plt.imshow(augmented_data[], cmap='gray')
-    #plt.title("name = " + file)
+    plt.imshow(augmented_data[-1], cmap='gray')
+    plt.title("name = " + file)
     # plt.figure()
-    #plt.savefig('../not_augmented/' + file + '.png')
-    #plt.close()
+    plt.savefig('../augmented/' + file + '.png')
+    plt.close()
     return augmented_data, label
 
 def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=32):
