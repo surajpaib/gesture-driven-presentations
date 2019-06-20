@@ -1,15 +1,11 @@
 import sys
 import os
-import argparse
-import time
 from sys import platform
 from typing import List, Optional
 
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2
 
-from keypoints import KEYPOINTS_DICT
+from video_processing.keypoints import KEYPOINTS_DICT
 
 # Import Openpose (Windows/Ubuntu/OSX)
 dir_path = os.path.dirname(os.path.realpath(__file__))
