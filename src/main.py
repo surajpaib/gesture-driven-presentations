@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
             # Now get the last matrix of VideoData (which should be the last 4 frames, interpolated)
             interpolated_frame = video_data.get_newest_matrix()
-            cv2.imshow("Interpolated frame", cv2.resize(interpolated_frame, (640, 640)))
+            cv2.imshow("Interpolated frame", cv2.resize(interpolated_frame, (320, 320)))
 
             # Get prediction from cross-correlation classifier? TODO: make it faster!
             label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
@@ -124,53 +124,51 @@ if __name__ == "__main__":
                 left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
                 hand_segmentation(left_hand_region, right_hand_region)
 
-        # Perform gesture recognition on the arm keypoints.
-        if keypoints is not None:
-            r_wrist = keypoints[0]
-            l_wrist = keypoints[1]
-            action = ""
-            print("Keypoint 0", keypoints[0])
-            # print("Keypoint 1", keypoints[1])
+        # # Perform gesture recognition on the arm keypoints.
+        # if keypoints is not None:
+        #     r_wrist = keypoints[4]
+        #     l_wrist = keypoints[7]
+        #     action = ""
 
-            # Only track if both wrists are seen with a confidence of > 0.3.
-            if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
-                r_wrist_x = r_wrist[0]
-                r_wrist_y = r_wrist[1]
-                l_wrist_x = l_wrist[0]
-                l_wrist_y = l_wrist[1]
+        #     # Only track if both wrists are seen with a confidence of > 0.3.
+        #     if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
+        #         r_wrist_x = r_wrist[0]
+        #         r_wrist_y = r_wrist[1]
+        #         l_wrist_x = l_wrist[0]
+        #         l_wrist_y = l_wrist[1]
 
-                # Display circles on the wrists.
-                cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
-                cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
+        #         # Display circles on the wrists.
+        #         cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
+        #         cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
 
-                # Left wrist: open/previous slide.
-                if l_wrist_x_old - l_wrist_x > 150:
-                    if not presentation_opened:
-                        action = "OPEN"
-                        wrapper = PowerpointWrapper()
-                        presentation = wrapper.open_presentation("../MRP-6.pptx")
-                        presentation.run_slideshow()
-                        presentation_opened = True
-                    else:
-                        action = "PREV"
-                        presentation.previous_slide()
-                l_wrist_x_old = l_wrist_x
+        #         # Left wrist: open/previous slide.
+        #         if l_wrist_x_old - l_wrist_x > 150:
+        #             if not presentation_opened:
+        #                 action = "OPEN"
+        #                 wrapper = PowerpointWrapper()
+        #                 presentation = wrapper.open_presentation("../MRP-6.pptx")
+        #                 presentation.run_slideshow()
+        #                 presentation_opened = True
+        #             else:
+        #                 action = "PREV"
+        #                 presentation.previous_slide()
+        #         l_wrist_x_old = l_wrist_x
 
-                # Right wrist: open/next slide.
-                if r_wrist_x - r_wrist_x_old > 150:
-                    if not presentation_opened:
-                        action = "OPEN"
-                        wrapper = PowerpointWrapper()
-                        presentation = wrapper.open_presentation("../MRP-6.pptx")
-                        presentation.run_slideshow()
-                        presentation_opened = True
-                    else:
-                        presentation.next_slide()
-                        action = "NEXT"
-                r_wrist_x_old = r_wrist_x
+        #         # Right wrist: open/next slide.
+        #         if r_wrist_x - r_wrist_x_old > 150:
+        #             if not presentation_opened:
+        #                 action = "OPEN"
+        #                 wrapper = PowerpointWrapper()
+        #                 presentation = wrapper.open_presentation("../MRP-6.pptx")
+        #                 presentation.run_slideshow()
+        #                 presentation_opened = True
+        #             else:
+        #                 presentation.next_slide()
+        #                 action = "NEXT"
+        #         r_wrist_x_old = r_wrist_x
 
-            # Show if any action has been done.
-            cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        #     # Show if any action has been done.
+        #     cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         # Stop measuring frame time and display FPS.
         end_frame_time = current_milli_time()

@@ -122,9 +122,9 @@ def process_video(video_path, label, output_path, output_path_7, update=False):
 
 
 if __name__ == "__main__":
-    video_dir = Path('C:\\Users\\AGANDO\\Videos\\videos\\start_stop')
-    result_dir = video_dir.parent / "Processing_Results_Start_Stop"
-    result_dir_7 = video_dir.parent / "Processing_Results_Start_Stop_7"
+    video_dir = Path('F:\\MRP6 data\\reset_start_stop_rodrigo')
+    result_dir = video_dir.parent / "Processing_Results_Reset_Start_Stop_Rodrigo"
+    result_dir_7 = video_dir.parent / "Processing_Results_Reset_Start_Stop_7_Rodrigo"
     opWrapper = init_openpose(hand_detection=False)
     count = 0
     for video in video_dir.iterdir():
