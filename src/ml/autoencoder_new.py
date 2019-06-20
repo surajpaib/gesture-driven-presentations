@@ -9,6 +9,8 @@ from video_processing.load_data import *
 if not os.path.exists('./autoencoder_img'):
     os.mkdir('./autoencoder_img')
 
+latent_space_dim = 20
+
 
 class Autoencoder(nn.Module):
     def __init__(self, train_data_shape):
@@ -19,13 +21,9 @@ class Autoencoder(nn.Module):
             nn.ReLU(True),
             nn.Linear(128, 64),
             nn.ReLU(True),
-            nn.Linear(64, 12),
-            nn.ReLU(True),
-            nn.Linear(12, 3))
+            nn.Linear(64, latent_space_dim)),
         self.decoder = nn.Sequential(
-            nn.Linear(3, 12),
-            nn.ReLU(True),
-            nn.Linear(12, 64),
+            nn.Linear(latent_space_dim, 64),
             nn.ReLU(True),
             nn.Linear(64, 128),
             nn.ReLU(True),
