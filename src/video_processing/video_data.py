@@ -6,18 +6,20 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 from video_processing.frame_data import FrameData
+from video_processing.keypoints import KEYPOINTS_DICT
 
 class VideoData:
-    def __init__(self, interpolations_frames, matrix_size, noise_frames=1, confidence_threshold=0.5):
+    def __init__(self, interpolations_frames, matrix_size, used_keypoints, noise_frames=1, confidence_threshold=0.5):
         self._frames = []
         self._label = ""
         self._framerate = 0
 
         self._matrix_list = []
         self._matrix_size = matrix_size
+        self._used_keypoints = [KEYPOINTS_DICT[k] for k in used_keypoints]
         
         self._last_keypoint_list = []
-        while len(self._last_keypoint_list) < 6:        # we currently use 6 keypoints
+        while len(self._last_keypoint_list) < 19:
             self._last_keypoint_list.append([])
 
         self.noise_frames = noise_frames
@@ -54,15 +56,15 @@ class VideoData:
         self.prep_mat(matrix)
 
         # Iterate over the interesting keypoints.
-        for k in range(len(frame_data.keypoints[2:8])):
+        for k in self._used_keypoints:
             last_keypoints = self._last_keypoint_list[k][-(self.interpolation_frames - 1):]
-            keypoint = (frame_data.keypoints[2:8])[k]
+            keypoint = frame_data.keypoints[k]
 
             # Apply the confidence threshold and either add the new point, or duplicate the last one.
             if keypoint[2] > self.confidence_threshold:
                 key_x = int(keypoint[0] * self._matrix_size / 6 + self._matrix_size / 2)
-                key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 8)
-                if key_x >= self._matrix_size or key_y >= self._matrix_size:
+                key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 6)
+                if key_x >= self._matrix_size or key_y >= self._matrix_size - 10:
                     continue
                 matrix[key_y, key_x] = 1
                 last_keypoints.append([key_x, key_y])
@@ -156,6 +158,7 @@ def get_matrix_list(interpolation_frames, filename):
 if __name__ == "__main__":
     data = VideoData(4)
     data.load_xml_file("../process_results/test.xml")
+    
     matrix_list = data.get_matrices()
     for matrix in matrix_list[:9]:
         plt.figure()

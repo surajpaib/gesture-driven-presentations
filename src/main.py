@@ -8,6 +8,7 @@ from ml.correlation_classifier import CorrelationClassifier
 from openpose_utils import *
 from video_processing.frame_data import FrameData
 from video_processing.video_data import VideoData
+from video_processing.keypoints import get_all_keypoints_list
 from wrappers import PowerpointWrapper
 
 current_milli_time = lambda: int(round(time.time() * 1000))
@@ -72,16 +73,16 @@ if __name__ == "__main__":
     l_wrist_x_old = 0
 
     # Used to automatically interpolate previous frames.
-    interp_frames = 15
+    interp_frames = 10
     img_size = 32
-    video_data = VideoData(interp_frames, confidence_threshold=0.3, matrix_size=img_size)
+    used_keypoints = ["RWrist", "LWrist"]
+    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=0.3, matrix_size=img_size)
 
     # Correlation-based "classifier" initialisation.
-    correlation_classifier = CorrelationClassifier("..\dataset", interpolations_frames=interp_frames)
+    correlation_classifier = CorrelationClassifier("..\dataset", used_keypoints=used_keypoints, interpolations_frames=interp_frames)
 
-    train_model(32)
+    # Load the autoencoder.
     autoencoder = Autoencoder(img_size * (img_size - 10))
-
     # autoencoder.train()
     autoencoder.load_state()
 
@@ -100,9 +101,7 @@ if __name__ == "__main__":
         datum = process_image(frame, opWrapper)
 
         # Get some useful values from the Datum object.
-        keypoints = get_keypoints_from_datum(datum,
-                                             ["Nose", "Neck", "RShoulder", "RElbow", "RWrist", "LShoulder", "LElbow",
-                                              "LWrist"])
+        keypoints = get_keypoints_from_datum(datum, get_all_keypoints_list())
         hand_rectangles = get_hand_rectangles_from_datum(datum)
 
         if keypoints is not None:
@@ -112,7 +111,14 @@ if __name__ == "__main__":
 
             # Now get the last matrix of VideoData (which should be the last 4 frames, interpolated)
             interpolated_frame = video_data.get_newest_matrix()
-            cv2.imshow("Interpolated frame", cv2.resize(interpolated_frame, (320, 320)))
+
+            # Dilate the interpolated frame (CURRENTLY DEACTIVATED).
+            kernel_size = 2
+            # kernel = np.ones((kernel_size, kernel_size), np.uint8)
+            # interpolated_frame_dilated = cv2.dilate(interpolated_frame, kernel, iterations=1)
+            interpolated_frame_dilated = interpolated_frame
+            interpolated_frame_resized = cv2.resize(interpolated_frame_dilated, (320, 320))
+            cv2.imshow("Interpolated frame", interpolated_frame_resized)
 
             # Get prediction from cross-correlation classifier? TODO: make it faster!
             label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
@@ -184,9 +190,10 @@ if __name__ == "__main__":
             break
 
         # Call the autoencoder
-        interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
+        interpolated_frame_tensor = torch.from_numpy(interpolated_frame_dilated.reshape(1, -1))
         decoded = autoencoder.forward(interpolated_frame_tensor)
-        mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
+        cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
+        mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame_dilated)).mean(
             axis=None)
         if mse_error > 0.01:
             print("BIG ERROR", mse_error)
