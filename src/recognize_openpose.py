@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
         # Call the autoencoder
         interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
-        decoded = autoencoder.forward(interpolated_frame_tensor)
+        _, decoded = autoencoder.forward(interpolated_frame_tensor)
         mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
             axis=None)
         if mse_error > 0.01:
