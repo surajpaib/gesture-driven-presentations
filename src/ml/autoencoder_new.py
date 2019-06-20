@@ -21,7 +21,7 @@ class Autoencoder(nn.Module):
             nn.ReLU(True),
             nn.Linear(128, 64),
             nn.ReLU(True),
-            nn.Linear(64, latent_space_dim)),
+            nn.Linear(64, latent_space_dim))
         self.decoder = nn.Sequential(
             nn.Linear(latent_space_dim, 64),
             nn.ReLU(True),
@@ -53,15 +53,14 @@ def to_img(x):
 
 def load_train_data(img_size=32, batch_size=32):
     # Autoencoder does not have labels
-    train_data, train_labels = load_video_data_labels(7, 2, img_size)
+    train_data, train_labels = load_video_data_labels(7, 2, img_size, main=False)
     p = np.random.permutation(len(train_data))
     train_data, train_labels = train_data[p], train_labels[p]
-    # np.random.shuffle(train_data)
+
     # Transform to tensor
     train_data_tensor = torch.from_numpy(train_data)
     train_labels_tensor = torch.from_numpy(train_labels)
-    # train_data_tensor = img_transform(train_data)
-    # train_labels_tensor = img_transform(train_labels)
+
     # Data Loader for easy mini-batch return in training, load the Dataset from the numpy arrays
     my_dataset = TensorDataset(train_data_tensor, train_labels_tensor)  # create your Dataset
     dataloader = DataLoader(my_dataset, batch_size=batch_size)  # transform Dataset into a Dataloader
@@ -71,19 +70,19 @@ def load_train_data(img_size=32, batch_size=32):
 
 def train_model(img_size=32, batch_size=32):
     train_data, train_labels, dataloader = load_train_data(img_size, batch_size)
-    num_epochs = 100
+    num_epochs = 5
     learning_rate = 1e-3
-    model = Autoencoder(train_data.shape[1] * train_data.shape[2]).cuda()
+    autoencoder = Autoencoder(train_data.shape[1] * train_data.shape[2]).cuda()
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=learning_rate, weight_decay=1e-5)
+        autoencoder.parameters(), lr=learning_rate, weight_decay=1e-5)
     for epoch in range(num_epochs):
         for data in dataloader:
             img, _ = data
             img = img.view(img.size(0), -1)
             img = Variable(img).cuda()
             # ===================forward=====================
-            output = model(img)
+            output = autoencoder(img)
             loss = criterion(output, img)
             # ===================backward====================
             optimizer.zero_grad()
@@ -99,7 +98,7 @@ def train_model(img_size=32, batch_size=32):
             input_pic = to_img(img.cpu().data)
             save_image(input_pic, './autoencoder_img/image_{}_input.png'.format(epoch))
 
-    model.save_state()
-    return model
+    autoencoder.save_state()
+    return autoencoder
 
 # train_model()
