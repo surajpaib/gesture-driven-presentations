@@ -44,7 +44,7 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
                 #print('Folder:', folder,'File:', file)
                 #print(np.linalg.norm(np.array(data[-1])))
                 labels.append(label)
-                augmented_data, label_augmented = data_augmentation(data[-1],labels[-1])
+                augmented_data, label_augmented = data_augmentation(data[-1],labels[-1], file)
                 data.append(augmented_data)
                 labels.append(label_augmented)
 
