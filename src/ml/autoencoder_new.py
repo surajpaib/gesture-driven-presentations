@@ -101,4 +101,8 @@ def train_model(img_size=32, batch_size=32):
     autoencoder.save_state()
     return autoencoder
 
-# train_model()
+def main():
+    train_model()
+
+if __name__== "__main__":
+    main()

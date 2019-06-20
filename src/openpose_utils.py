@@ -38,7 +38,7 @@ def init_openpose(net_resolution="-1x368", hand_detection=False) -> op.WrapperPy
     # Set OpenPose options.
     params = dict()
     params["model_folder"] = "../openpose/models"
-    params["model_pose"] = "COCO"
+    params["model_pose"] = "BODY_25"
     params["net_resolution"] = net_resolution
     if hand_detection:
         params["hand"] = 1

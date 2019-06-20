@@ -36,7 +36,7 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
     return np.array(data), np.array(labels)
 
 
-def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=32, main=True):
+def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=32):
     path = 'interpolation_' + str(interpolation_frames) + '_noise_' + str(
         noise_parameters) + '_matrix_size_' + str(matrix_size) + '.pkl'
 
