@@ -33,9 +33,9 @@ class Autoencoder(nn.Module):
             nn.Tanh())
 
     def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
+        latent_space = self.encoder(x)
+        decoded = self.decoder(latent_space)
+        return latent_space, decoded
 
     def load_state(self):
         self.load_state_dict(torch.load(self.path))
