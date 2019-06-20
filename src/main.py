@@ -79,7 +79,7 @@ if __name__ == "__main__":
     # Correlation-based "classifier" initialisation.
     correlation_classifier = CorrelationClassifier("..\dataset", interpolations_frames=interp_frames)
 
-    # train_model(32)
+    train_model(32)
     autoencoder = Autoencoder(img_size * (img_size - 10))
 
     # autoencoder.train()
