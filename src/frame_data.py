@@ -18,6 +18,7 @@ class FrameData:
         self._avg_point[1] = int(avg_y_node.text)
         avg_dist_node = frame_node.find("Avg_dist")
         self._avg_dist = float(avg_dist_node.text)
+
         for keypoint_node in frame_node.findall("Keypoint"):
             keypoint = [0,0,0]
             x_node = keypoint_node.find("X")
