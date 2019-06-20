@@ -15,7 +15,8 @@ latent_space_dim = 20
 class Autoencoder(nn.Module):
     def __init__(self, train_data_shape):
         super(Autoencoder, self).__init__()
-        self.path = '../autoencoder_' + str(train_data_shape) + '.pth'
+        self.path = os.path.dirname(os.path.realpath(__file__)).split("src")[0].replace("\\", "/") + \
+                    'autoencoder_' + str(train_data_shape) + '.pth'
         self.encoder = nn.Sequential(
             nn.Linear(train_data_shape, 128),
             nn.ReLU(True),
@@ -53,7 +54,7 @@ def to_img(x):
 
 def load_train_data(img_size=32, batch_size=32):
     # Autoencoder does not have labels
-    train_data, train_labels = load_video_data_labels(7, 2, img_size, main=False)
+    train_data, train_labels = load_video_data_labels(7, 2, img_size)
     p = np.random.permutation(len(train_data))
     train_data, train_labels = train_data[p], train_labels[p]
 
