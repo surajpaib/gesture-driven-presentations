@@ -12,7 +12,7 @@ from keras.preprocessing.image import load_img
 from keras.preprocessing.image import img_to_array
 from keras.preprocessing.image import ImageDataGenerator
 
-
+BATCH_SIZE = 9
 def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size, kernel_size=2):
     xml_folder = '../some_xml_file'
     broken_videos_path = 'broken_videos.txt'
@@ -54,7 +54,6 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
                 #labels.append(label_augmented)
             if matrix.shape[0] < min_data:
                 min_data = matrix.shape[0]
-        data_augmentation(data, labels, file)
 
             #for norm_threshold in NORM_THRESHOLDS:
             #if np.linalg.norm(np.array(matrix), ord=None, axis=None, keepdims=False) <= 13:
@@ -72,32 +71,13 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
             #     plt.title(file_path)
             #     plt.show()
         print(folder, "folder done. Label =", label)
+    X_augmented, y_augmented = data_augmentation(data, labels, BATCH_SIZE)
+    data.append(X_augmented)
+    labels.append(y_augmented)
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
 
-def data_augmentation(data, labels, file):
-    # expand dimension to one sample
-    #samples = expand_dims(data, 0)
-    # create image data augmentation generator
-    data = np.array(data)
-    #for X_batch, y_batch in data.flow(data, labels, batch_size=3):
-        # create a grid of 3x3 images
-    #    for i in range(0, 9):
-    #        plt.subplot(330 + 1 + i)
-    #        plt.imshow(X_batch[i].reshape(22, 32), cmap=plt.get_cmap('gray'))
-        # show the plot
-    #    plt.show()
-    X_train = data.reshape(data.shape[0], 1, 22, 32)
-    y_train = labels
-    X_train = X_train.astype('float32')
-    datagen = ImageDataGenerator(zoom_range=[0.99, 1.0],
-                                 width_shift_range=0.1,
-                                 height_shift_range=0.1,
-                                 shear_range=0.1)
-    # fit parameters from data
-    datagen.fit(X_train)
-    # configure batch size and retrieve one batch of images
-    for X_batch, y_batch in datagen.flow(X_train, y_train, batch_size=9):
+def visualize_augmented_data(X_batch, y_batch):
         # create a grid of 3x3 images
         for i in range(0, 9):
             plt.subplot(330 + 1 + i)
@@ -108,17 +88,42 @@ def data_augmentation(data, labels, file):
              plt.title('StartStop')
         # show the plot
         plt.show()
-        plt.savefig('../augmented' + file + '.png')
-        plt.close()
+        #plt.savefig('../augmented/' + '.png')
+        #plt.close()
+
+def data_augmentation(data, labels, batch_size):
+    data = np.array(data)
+    #for X_batch, y_batch in data.flow(data, labels, batch_size=3):
+        # create a grid of 3x3 images
+    #    for i in range(0, 9):
+    #        plt.subplot(330 + 1 + i)
+    #        plt.imshow(X_batch[i].reshape(22, 32), cmap=plt.get_cmap('gray'))
+        # show the plot
+    #    plt.show()
+    X_train = data.reshape(data.shape[0], 22, 32, 1)
+    y_train = labels
+    X_train = X_train.astype('float32')
+    datagen = ImageDataGenerator(zoom_range=[0.99, 1.0],
+                                 width_shift_range=0.1,
+                                 height_shift_range=0.1,
+                                 shear_range=0.1)
+    # fit parameters from data
+    datagen.fit(X_train)
+    #Initialize the list of the output (the augmented data)
+    X = []
+    y = []
+    # configure batch size and retrieve one batch of images
+    for X_batch, y_batch in datagen.flow(X_train, y_train, batch_size=9):
+        for i in range(0,9):
+            X.append(X_batch[i].reshape(22, 32).tolist())
+            y.append(y_batch[i].tolist())
+
+        #visualize_augmented_data(X_batch, y_batch)
         break
-    # show the figure
-    #pyplot.show()
-    #plt.imshow(augmented_data[-1], cmap='gray')
-    #plt.title("name = " + file)
-    # plt.figure()
-    #plt.savefig('../augmented/' + file + '.png')
-    #plt.close()
-    #return augmented_data, label
+    #X = np.array(X)
+    #y = np.array(y)
+    return X, y
+
 
 def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=32):
     path = 'interpolation_' + str(interpolation_frames) + '_noise_' + str(
@@ -160,3 +165,14 @@ def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=3
 #     plt.show()
 
 data, labels = create_video_data_labels(7, 2, 32)
+
+for i in range(0, len(data)-1):
+    #plt.subplot(1, len(data), i+1)
+    plt.imshow(data[i].reshape(22, 32), cmap=plt.get_cmap('gray'))
+    if labels[i] == 1:
+        plt.title('Lprev')
+    if labels[i] == 2:
+        plt.title('StartStop')
+    plt.show()
+# show the plot
+#plt.show()
