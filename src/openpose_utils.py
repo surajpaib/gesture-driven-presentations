@@ -6,6 +6,7 @@ from typing import List, Optional
 import numpy as np
 
 from video_processing.keypoints import KEYPOINTS_DICT
+from config import CONFIG
 
 # Import Openpose (Windows/Ubuntu/OSX)
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -29,7 +30,7 @@ except ImportError as e:
     raise e
 
 
-def init_openpose(net_resolution="-1x368", hand_detection=False) -> op.WrapperPython:
+def init_openpose(net_resolution=CONFIG["net_resolution"], hand_detection=False) -> op.WrapperPython:
     """
     Initializes OpenPose. For a list of parameters, refer to:
     https://github.com/CMU-Perceptual-Computing-Lab/openpose/blob/master/include/openpose/flags.hpp
@@ -37,8 +38,8 @@ def init_openpose(net_resolution="-1x368", hand_detection=False) -> op.WrapperPy
 
     # Set OpenPose options.
     params = dict()
-    params["model_folder"] = "../openpose/models"
-    params["model_pose"] = "BODY_25"
+    params["model_folder"] = CONFIG["model_folder"]
+    params["model_pose"] = CONFIG["model_pose"]
     params["net_resolution"] = net_resolution
     if hand_detection:
         params["hand"] = 1

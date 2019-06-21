@@ -3,10 +3,11 @@ from pathlib import Path
 
 from openpose_utils import *
 from video_processing.process_videos_utils import normalize_point, create_xml_for_keypoint
+from config import CONFIG
+
 
 openpose_initialized = False
 opWrapper = None
-
 
 
 def get_frame_list_of_video(video_path):
@@ -109,9 +110,9 @@ def process_video(video_path, label, output_path, output_path_7, update=False):
 
 
 if __name__ == "__main__":
-    video_dir = Path('F:\\MRP6 data\\reset_start_stop_rodrigo')
-    result_dir = video_dir.parent / "Processing_Results_Reset_Start_Stop_Rodrigo"
-    result_dir_7 = video_dir.parent / "Processing_Results_Reset_Start_Stop_7_Rodrigo"
+    video_dir = Path(CONFIG["video_dir"])
+    result_dir = video_dir.parent / CONFIG["result_dir"]
+    result_dir_7 = video_dir.parent / CONFIG["result_dir_7"]
     opWrapper = init_openpose(hand_detection=False)
     count = 0
     for video in video_dir.iterdir():
@@ -119,6 +120,6 @@ if __name__ == "__main__":
             output_file_path = result_dir / (video.stem + ".xml")
             output_file_path_7 = result_dir_7 / (video.stem + "_7.xml")
             print(str(output_file_path))
-            process_video(str(video), "Start_Stop", output_file_path, output_file_path_7, update=True)
+            process_video(str(video), CONFIG["label"], output_file_path, output_file_path_7, update=True)
             count = count + 1
     print("Finished")
