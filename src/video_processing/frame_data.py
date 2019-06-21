@@ -3,7 +3,10 @@ import xml.etree.ElementTree as ET
 
 import numpy as np
 
-from video_processing.process_videos_utils import normalize_point
+import sys
+sys.path.append("./")
+
+from video_processing.process_videos_utils import normalize_point, create_xml_for_keypoint
 from video_processing.keypoints import KEYPOINTS_DICT
 
 class FrameData:
@@ -28,6 +31,18 @@ class FrameData:
             confidence_node = keypoint_node.find("Confidence")
             keypoint[2] = float(confidence_node.text)
             self._keypoints.append(keypoint)
+
+    def create_xml_node(self):
+        frame_node = ET.Element('Frame')
+        avg_x_node = ET.SubElement(frame_node,"Avg_x")
+        avg_x_node.text = str(self.avg_point[0])
+        avg_y_node = ET.SubElement(frame_node,"Avg_y")
+        avg_y_node.text = str(self.avg_point[1])
+        avg_dist_node = ET.SubElement(frame_node,"Avg_dist")
+        avg_dist_node.text = str(self.avg_dist)
+        for i in range(len(self.keypoints)):
+            frame_node.append(create_xml_for_keypoint(i,self.keypoints[i],self.avg_dist,self.avg_point))
+        return frame_node
     
     @staticmethod
     def from_keypoints(keypoints):
