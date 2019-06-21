@@ -64,7 +64,7 @@ class AutoEncoder(nn.Module):
         return encoded, decoded
 
 
-autoencoder = AutoEncoder()
+autoencoder = AutoEncoder(LATENT_SPACE).cuda()
 
 optimizer = torch.optim.Adam(autoencoder.parameters(), lr=LR)
 loss_func = nn.MSELoss()
@@ -86,21 +86,21 @@ for epoch in range(EPOCH):
         b_x = x.view(-1, train_data.shape[1] * train_data.shape[2])  # batch x, shape (batch, 28*28)
         b_y = x.view(-1, train_data.shape[1] * train_data.shape[2])  # batch y, shape (batch, 28*28)
 
-        encoded, decoded = autoencoder(b_x)
+        encoded, decoded = autoencoder(b_x.cuda())
 
-        loss = loss_func(decoded, b_y) * 1000  # mean square error
+        loss = loss_func(decoded, b_y.cuda()) * 1000  # mean square error
         optimizer.zero_grad()  # clear gradients for this training step
         loss.backward()  # backpropagation, compute gradients
         optimizer.step()  # apply gradients
 
         if step % 100 == 0:
-            print('Epoch: ', epoch, '| train loss: %.4f' % loss.data.numpy())
+            print('Epoch: ', epoch, '| train loss: %.4f' % loss.data.cpu().numpy())
 
             # plotting decoded image (second row)
-            _, decoded_data = autoencoder(view_data)
+            _, decoded_data = autoencoder(view_data.cuda())
             for i in range(N_TEST_IMG):
                 a[1][i].clear()
-                a[1][i].imshow(np.reshape(decoded_data.data.numpy()[i], (train_data.shape[1], train_data.shape[2])),
+                a[1][i].imshow(np.reshape(decoded_data.data.cpu().numpy()[i], (train_data.shape[1], train_data.shape[2])),
                                cmap='gray')
                 a[1][i].set_xticks(())
                 a[1][i].set_yticks(())
@@ -113,7 +113,7 @@ plt.ioff()
 # visualize in 3D plot
 view_data = train_data_tensor[:200].view(-1, train_data.shape[1] * train_data.shape[2]).type(
     torch.FloatTensor) / 255.
-encoded_data, _ = autoencoder(view_data)
+encoded_data, _ = autoencoder(view_data.cuda())
 fig = plt.figure(2)
 ax = Axes3D(fig)
 X, Y, Z = encoded_data.data[:, 0].numpy(), encoded_data.data[:, 1].numpy(), encoded_data.data[:, 2].numpy()

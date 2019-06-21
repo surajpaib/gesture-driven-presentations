@@ -3,6 +3,8 @@ import pickle
 
 import cv2
 import numpy as np
+import torch
+import matplotlib.pyplot as plt
 
 from video_processing.video_data import VideoData
 
@@ -12,6 +14,7 @@ def create_video_data_labels(interpolation_frames, noise_parameters, used_keypoi
     data = []
     labels = []
     min_data = 99
+    kernel = np.ones((kernel_size, kernel_size), np.uint8)
     for label, folder in enumerate(os.listdir(xml_folder)):
         # print('folder', folder)
         for file in os.listdir(xml_folder + '/' + folder):
@@ -64,16 +67,18 @@ def load_video_data_labels(interpolation_frames, noise_parameters, used_keypoint
 
     return video_data, video_labels
 
-# import torch
-# print('CUDA is' + (' ' if torch.cuda.is_available() else ' not ') + 'available')
-# data, labels = create_video_data_labels(7, 2, 32)
-#
-# # print("Data shape", data.shape)
-# # print("labels shape", labels.shape)
-# indexes = [i for i in range(len(labels))]
-# np.random.shuffle(indexes)
-#
-# for i in indexes:
-#     plt.imshow(data[i], cmap='gray')
-#     plt.title("label = " + str(labels[i]))
-#     plt.show()
+if __name__ == "__main__":
+    # print('CUDA is' + (' ' if torch.cuda.is_available() else ' not ') + 'available')
+    data, labels = create_video_data_labels(4, 2, 64)
+    
+    # print("Data shape", data.shape)
+    # print("labels shape", labels.shape)
+    indexes = [i for i in range(len(labels))]
+    np.random.shuffle(indexes)
+    
+    for i in indexes:
+        plt.imshow(data[i], cmap='gray')
+        plt.title("label = " + str(labels[i]))
+        plt.figure()
+        plt.show()
+

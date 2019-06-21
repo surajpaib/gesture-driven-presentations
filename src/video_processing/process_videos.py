@@ -2,24 +2,11 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from openpose_utils import *
-from video_processing.process_videos_utils import normalize_point
+from video_processing.process_videos_utils import normalize_point, create_xml_for_keypoint
 
 openpose_initialized = False
 opWrapper = None
 
-
-def create_xml_for_keypoint(id, keypoint, avg_dist, avg_point):
-    keypoint_node = ET.Element('Keypoint')
-    id_node = ET.SubElement(keypoint_node, 'ID')
-    id_node.text = str(id)
-    norm_point = normalize_point([keypoint[0], keypoint[1]], avg_dist, avg_point)
-    x_node = ET.SubElement(keypoint_node, 'X')
-    x_node.text = str(norm_point[0])
-    y_node = ET.SubElement(keypoint_node, 'Y')
-    y_node.text = str(norm_point[1])
-    conf_node = ET.SubElement(keypoint_node, 'Confidence')
-    conf_node.text = str(keypoint[2])
-    return keypoint_node
 
 
 def get_frame_list_of_video(video_path):
