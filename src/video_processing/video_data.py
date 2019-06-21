@@ -10,9 +10,10 @@ sys.path.append("./")
 
 from video_processing.frame_data import FrameData
 from video_processing.keypoints import KEYPOINTS_DICT
+from config import CONFIG
 
 class VideoData:
-    def __init__(self, interpolations_frames, matrix_size, used_keypoints, noise_frames=1, confidence_threshold=0.5):
+    def __init__(self, interpolations_frames=CONFIG["interpolation_frames"], matrix_size=CONFIG["matrix_size"], used_keypoints=CONFIG["used_keypoints"], noise_frames=CONFIG["noise_frames"], confidence_threshold=CONFIG["confidence_threshold"], matrix_vertical_crop=CONFIG["matrix_vertical_crop"]):
         self._frames = []
         # We have to save left out frames to save it back to an XML file
         self._pre_frames = [] # frames that are skipped before the start (noise frames)
@@ -22,6 +23,7 @@ class VideoData:
 
         self._matrix_list = []
         self._matrix_size = matrix_size
+        self._matrix_vertical_crop = matrix_vertical_crop
         self._used_keypoints = [KEYPOINTS_DICT[k] for k in used_keypoints]
         
         self._last_keypoint_list = []
@@ -63,7 +65,7 @@ class VideoData:
         if len(self._matrix_list) > 0:
             matrix = self._matrix_list[-1]
         else:
-            matrix = np.zeros((self._matrix_size - 10, self._matrix_size))
+            matrix = np.zeros((self._matrix_size - self._matrix_vertical_crop, self._matrix_size))
         self.prep_mat(matrix)
 
         # Iterate over the interesting keypoints.
@@ -75,7 +77,7 @@ class VideoData:
             if keypoint[2] > self.confidence_threshold:
                 key_x = int(keypoint[0] * self._matrix_size / 6 + self._matrix_size / 2)
                 key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 6)
-                if key_x >= self._matrix_size or key_y >= self._matrix_size - 10:
+                if key_x >= self._matrix_size or key_y >= self._matrix_size - self._matrix_vertical_crop:
                     print("Error adding frame; key is to big: "+str(key_x) + " | " +str(key_y))
                     continue
                 matrix[key_y, key_x] = 1
@@ -138,7 +140,7 @@ class VideoData:
         return np.float32(self._matrix_list[-1])
 
     def get_flattened_matrix(self):
-        flattened_matrix = np.zeros((self._matrix_size - 10, self._matrix_size))
+        flattened_matrix = np.zeros((self._matrix_size - self._matrix_vertical_crop, self._matrix_size))
         for matrix in self._matrix_list:
             flattened_matrix += matrix
         return flattened_matrix
@@ -188,13 +190,6 @@ def get_matrix_list(interpolation_frames, filename):
     return data.get_matrices()
 
 if __name__ == "__main__":
-    data = VideoData(4,32,["RWrist","LWrist"])
+    data = VideoData(interpolation_frames=4, matrix_size=32, used_keypoints=["RWrist","LWrist"])
     data.load_xml_file("../process_results/test.xml")
-
     data.save_to_xml("../process_results/test_s.xml")
-    
-    #matrix_list = data.get_matrices()
-    #for matrix in matrix_list[:9]:
-    #    plt.figure()
-    #    plt.imshow(matrix, cmap='gray')
-    #    plt.show()

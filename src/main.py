@@ -10,6 +10,7 @@ from video_processing.frame_data import FrameData
 from video_processing.video_data import VideoData
 from video_processing.keypoints import get_all_keypoints_list
 from wrappers import PowerpointWrapper
+from config import CONFIG
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -59,7 +60,7 @@ def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarra
 # -------------------------------------------------------------------------------
 if __name__ == "__main__":
     # Initialize OpenPose.
-    opWrapper = init_openpose(net_resolution="176x-1", hand_detection=False)
+    opWrapper = init_openpose(hand_detection=False)
 
     # Get the reference to the webcam.
     camera = cv2.VideoCapture(0)
@@ -73,17 +74,18 @@ if __name__ == "__main__":
     l_wrist_x_old = 0
 
     # Used to automatically interpolate previous frames.
-    interp_frames = 10
-    img_size = 32
-    used_keypoints = ["RWrist", "LWrist"]
-    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=0.3, matrix_size=img_size)
+    interp_frames = CONFIG["interpolation_frames"]
+    img_size = CONFIG["matrix_size"]
+    used_keypoints = CONFIG["used_keypoints"]
+    confidence_threshold = CONFIG["confidence_threshold"]
+    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold, matrix_size=img_size)
 
     # Correlation-based "classifier" initialisation.
-    correlation_classifier = CorrelationClassifier("..\dataset", used_keypoints=used_keypoints, interpolations_frames=interp_frames)
+    correlation_classifier = CorrelationClassifier()
 
     # Load the autoencoder.
-    autoencoder = Autoencoder(img_size * (img_size - 10))
-    # autoencoder.train()
+    matrix_vertical_crop = CONFIG["matrix_vertical_crop"]
+    autoencoder = Autoencoder(train_data_shape=(img_size * (img_size - matrix_vertical_crop)))
     autoencoder.load_state()
 
     # Keep looping, until interrupted by a Q keypress.
@@ -112,15 +114,17 @@ if __name__ == "__main__":
             # Now get the last matrix of VideoData (which should be the last 4 frames, interpolated)
             interpolated_frame = video_data.get_newest_matrix()
 
-            # Dilate the interpolated frame (CURRENTLY DEACTIVATED).
-            kernel_size = 2
-            # kernel = np.ones((kernel_size, kernel_size), np.uint8)
-            # interpolated_frame_dilated = cv2.dilate(interpolated_frame, kernel, iterations=1)
-            interpolated_frame_dilated = interpolated_frame
-            interpolated_frame_resized = cv2.resize(interpolated_frame_dilated, (320, 320))
+            # Dilate the interpolated frame (if enabled).
+            if CONFIG["use_dilation"]:
+                kernel_size = CONFIG["kernel_size"]
+                kernel = np.ones((kernel_size, kernel_size), np.uint8)
+                interpolated_frame = cv2.dilate(interpolated_frame, kernel, iterations=1)
+                interpolated_frame_resized = cv2.resize(interpolated_frame_dilated, (320, 320))
+            else:
+                interpolated_frame_resized = cv2.resize(interpolated_frame, (320, 320))
             cv2.imshow("Interpolated frame", interpolated_frame_resized)
 
-            # Get prediction from cross-correlation classifier? TODO: make it faster!
+            # Get prediction from cross-correlation classifier?
             label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
             print(label, lowest_distance, highest_magnitude)
 
@@ -130,51 +134,51 @@ if __name__ == "__main__":
                 left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
                 hand_segmentation(left_hand_region, right_hand_region)
 
-        # # Perform gesture recognition on the arm keypoints.
-        # if keypoints is not None:
-        #     r_wrist = keypoints[4]
-        #     l_wrist = keypoints[7]
-        #     action = ""
+        # Perform gesture recognition on the arm keypoints.
+        if keypoints is not None:
+            r_wrist = keypoints[KEYPOINTS_DICT["RWrist"]]
+            l_wrist = keypoints[KEYPOINTS_DICT["LWrist"]]
+            action = ""
 
-        #     # Only track if both wrists are seen with a confidence of > 0.3.
-        #     if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
-        #         r_wrist_x = r_wrist[0]
-        #         r_wrist_y = r_wrist[1]
-        #         l_wrist_x = l_wrist[0]
-        #         l_wrist_y = l_wrist[1]
+            # Only track if both wrists are seen with a confidence of > 0.3.
+            if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
+                r_wrist_x = r_wrist[0]
+                r_wrist_y = r_wrist[1]
+                l_wrist_x = l_wrist[0]
+                l_wrist_y = l_wrist[1]
 
-        #         # Display circles on the wrists.
-        #         cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
-        #         cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
+                # Display circles on the wrists.
+                cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
+                cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
 
-        #         # Left wrist: open/previous slide.
-        #         if l_wrist_x_old - l_wrist_x > 150:
-        #             if not presentation_opened:
-        #                 action = "OPEN"
-        #                 wrapper = PowerpointWrapper()
-        #                 presentation = wrapper.open_presentation("../MRP-6.pptx")
-        #                 presentation.run_slideshow()
-        #                 presentation_opened = True
-        #             else:
-        #                 action = "PREV"
-        #                 presentation.previous_slide()
-        #         l_wrist_x_old = l_wrist_x
+                # Left wrist: open/previous slide.
+                if l_wrist_x_old - l_wrist_x > 150:
+                    if not presentation_opened:
+                        action = "OPEN"
+                        wrapper = PowerpointWrapper()
+                        presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+                        presentation.run_slideshow()
+                        presentation_opened = True
+                    else:
+                        action = "PREV"
+                        presentation.previous_slide()
+                l_wrist_x_old = l_wrist_x
 
-        #         # Right wrist: open/next slide.
-        #         if r_wrist_x - r_wrist_x_old > 150:
-        #             if not presentation_opened:
-        #                 action = "OPEN"
-        #                 wrapper = PowerpointWrapper()
-        #                 presentation = wrapper.open_presentation("../MRP-6.pptx")
-        #                 presentation.run_slideshow()
-        #                 presentation_opened = True
-        #             else:
-        #                 presentation.next_slide()
-        #                 action = "NEXT"
-        #         r_wrist_x_old = r_wrist_x
+                # Right wrist: open/next slide.
+                if r_wrist_x - r_wrist_x_old > 150:
+                    if not presentation_opened:
+                        action = "OPEN"
+                        wrapper = PowerpointWrapper()
+                        presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+                        presentation.run_slideshow()
+                        presentation_opened = True
+                    else:
+                        presentation.next_slide()
+                        action = "NEXT"
+                r_wrist_x_old = r_wrist_x
 
-        #     # Show if any action has been done.
-        #     cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            # Show if any action has been done.
+            cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         # Stop measuring frame time and display FPS.
         end_frame_time = current_milli_time()
@@ -190,12 +194,12 @@ if __name__ == "__main__":
             break
 
         # Call the autoencoder
-        interpolated_frame_tensor = torch.from_numpy(interpolated_frame_dilated.reshape(1, -1))
+        interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
         decoded = autoencoder.forward(interpolated_frame_tensor)
         cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
-        mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame_dilated)).mean(
+        mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
             axis=None)
-        if mse_error > 0.01:
+        if mse_error > CONFIG["reconstruction_error_threshold"]:
             print("BIG ERROR", mse_error)
         else:
             print("SMALL ERROR", mse_error)

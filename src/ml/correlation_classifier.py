@@ -5,17 +5,17 @@ import numpy as np
 from scipy import signal
 
 from video_processing.video_data import VideoData
-
+from config import CONFIG
 
 class CorrelationClassifier:
-    def __init__(self, dataset_path, used_keypoints, interpolations_frames=4, noise_frames=2, matrix_size=64, confidence_threshold=0.5):
+    def __init__(self, dataset_path=CONFIG["correlation_classifier_dataset"], used_keypoints=CONFIG["used_keypoints"], interpolations_frames=CONFIG["interpolation_frames"], noise_frames=CONFIG["noise_frames"], matrix_size=CONFIG["matrix_size"], confidence_threshold=CONFIG["confidence_threshold"]):
 
         # Settings to be passed to VideoData objects. Should probably match what is used for
         # the runtime VideoData.
         self.noise_frames = noise_frames
         self.interpolation_frames = interpolations_frames
-        self.confidence_threshold = 0.5
-        self.matrix_size = 64
+        self.confidence_threshold = confidence_threshold
+        self.matrix_size = matrix_size
         self.used_keypoints = used_keypoints
 
         # Load the dataset (folders of XML files).

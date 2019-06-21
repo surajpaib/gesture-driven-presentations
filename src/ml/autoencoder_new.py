@@ -7,15 +7,14 @@ from torchvision.utils import save_image
 import sys
 sys.path.append('./')
 from video_processing.load_data import *
+from config import CONFIG
 
-if not os.path.exists('./autoencoder_img'):
-    os.mkdir('./autoencoder_img')
-
-latent_space_dim = 10
+if not os.path.exists(CONFIG["autoencoder_img_path"]):
+    os.mkdir(CONFIG["autoencoder_img_path"])
 
 
 class Autoencoder(nn.Module):
-    def __init__(self, train_data_shape):
+    def __init__(self, train_data_shape, latent_space_dim=CONFIG["latent_space_dim"]):
         super(Autoencoder, self).__init__()
         self.path = os.path.dirname(os.path.realpath(__file__)).split("src")[0].replace("\\", "/") + \
                     'autoencoder_' + str(train_data_shape) + '.pth'
@@ -56,9 +55,9 @@ def to_img(x):
     return x
 
 
-def load_train_data(used_keypoints, img_size=32, batch_size=32):
+def load_train_data(used_keypoints=CONFIG["used_keypoints"], img_size=CONFIG["matrix_size"], batch_size=CONFIG["batch_size"], interpolation_frames=CONFIG["interpolation_frames"], noise_frames=CONFIG["noise_frames"]):
     # Autoencoder does not have labels
-    train_data, train_labels = load_video_data_labels(7, 2, used_keypoints, matrix_size=img_size)
+    train_data, train_labels = load_video_data_labels(interpolation_frames, noise_frames, used_keypoints, img_size)
     p = np.random.permutation(len(train_data))
     train_data, train_labels = train_data[p], train_labels[p]
 
@@ -72,13 +71,13 @@ def load_train_data(used_keypoints, img_size=32, batch_size=32):
 
     return train_data, train_labels, dataloader
 
-def train_model(img_size=32, batch_size=32, num_epochs=20, used_keypoints=["RShoulder", "LShoulder", "RElbow", "LElbow", "RWrist", "LWrist"]):
+def train_model(img_size=CONFIG["matrix_size"], batch_size=CONFIG["batch_size"], num_epochs=CONFIG["num_epochs"], used_keypoints=CONFIG["used_keypoints"]):
     train_data, train_labels, dataloader = load_train_data(used_keypoints, img_size, batch_size)
-    learning_rate = 1e-3
+    learning_rate = CONFIG["learning_rate"]
     autoencoder = Autoencoder(train_data.shape[1] * train_data.shape[2]).cuda()
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(
-        autoencoder.parameters(), lr=learning_rate, weight_decay=1e-5)
+        autoencoder.parameters(), lr=learning_rate, weight_decay=CONFIG["weight_decay"])
     for epoch in range(num_epochs):
         for data in dataloader:
             img, _ = data
@@ -96,16 +95,16 @@ def train_model(img_size=32, batch_size=32, num_epochs=20, used_keypoints=["RSho
               .format(epoch + 1, num_epochs, loss.data.cpu().numpy()))
         if epoch % 5 == 0:
             pic = to_img(output.cpu().data)
-            save_image(pic, './autoencoder_img/image_{}_output.png'.format(epoch))
+            save_image(pic, os.path.join(CONFIG["autoencoder_img_path"], 'image_{}_output.png'.format(epoch)))
 
             input_pic = to_img(img.cpu().data)
-            save_image(input_pic, './autoencoder_img/image_{}_input.png'.format(epoch))
+            save_image(input_pic, os.path.join(CONFIG["autoencoder_img_path"], 'image_{}_input.png'.format(epoch)))
 
     autoencoder.save_state()
     return autoencoder
 
 def main():
-    train_model(batch_size=64, num_epochs=20, used_keypoints=["RWrist", "LWrist"])
+    train_model()
 
 if __name__== "__main__":
     main()
