@@ -5,19 +5,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
 
+import sys
+sys.path.append("./")
+
 from video_processing.frame_data import FrameData
+from video_processing.keypoints import KEYPOINTS_DICT
 
 class VideoData:
-    def __init__(self, interpolations_frames, matrix_size, noise_frames=1, confidence_threshold=0.5):
+    def __init__(self, interpolations_frames, matrix_size, used_keypoints, noise_frames=1, confidence_threshold=0.5):
         self._frames = []
+        # We have to save left out frames to save it back to an XML file
+        self._pre_frames = [] # frames that are skipped before the start (noise frames)
+        self._post_frames = [] # frames that are left out in the end (noise frames)
         self._label = ""
         self._framerate = 0
 
         self._matrix_list = []
         self._matrix_size = matrix_size
+        self._used_keypoints = [KEYPOINTS_DICT[k] for k in used_keypoints]
         
         self._last_keypoint_list = []
-        while len(self._last_keypoint_list) < 6:        # we currently use 6 keypoints
+        while len(self._last_keypoint_list) < 19:
             self._last_keypoint_list.append([])
 
         self.noise_frames = noise_frames
@@ -41,8 +49,13 @@ class VideoData:
             frame_data.load_from_xml(frame_node)
             frame_list.append(frame_data)
 
+
+        for frame_data in frame_list[:self.noise_frames]:
+            self._pre_frames.append(frame_data)
         for frame_data in frame_list[self.noise_frames : -self.noise_frames]:
             self.add_frame(frame_data)
+        for frame_data in frame_list[-self.noise_frames:]:
+            self._post_frames.append(frame_data)
 
     def add_frame(self, frame_data: FrameData):
 
@@ -54,15 +67,16 @@ class VideoData:
         self.prep_mat(matrix)
 
         # Iterate over the interesting keypoints.
-        for k in range(len(frame_data.keypoints[2:8])):
+        for k in self._used_keypoints:
             last_keypoints = self._last_keypoint_list[k][-(self.interpolation_frames - 1):]
-            keypoint = (frame_data.keypoints[2:8])[k]
+            keypoint = frame_data.keypoints[k]
 
             # Apply the confidence threshold and either add the new point, or duplicate the last one.
             if keypoint[2] > self.confidence_threshold:
                 key_x = int(keypoint[0] * self._matrix_size / 6 + self._matrix_size / 2)
-                key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 8)
-                if key_x >= self._matrix_size or key_y >= self._matrix_size:
+                key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 6)
+                if key_x >= self._matrix_size or key_y >= self._matrix_size - 10:
+                    print("Error adding frame; key is to big: "+str(key_x) + " | " +str(key_y))
                     continue
                 matrix[key_y, key_x] = 1
                 last_keypoints.append([key_x, key_y])
@@ -98,8 +112,10 @@ class VideoData:
 
             self._last_keypoint_list[k] = last_keypoints
 
+        # Adding in the end to have the possibility of skipping invalid frames
         # Add frame data to the internal list.
         self._frames.append(frame_data)
+
         # Add the matrix to the list.
         self._matrix_list.append(matrix.copy())
 
@@ -134,6 +150,24 @@ class VideoData:
                     frame[x][y] -= (1 / self.interpolation_frames)             # 0.25 because we are interpolating over 4 frames
                     if frame[x][y] < (1 / self.interpolation_frames):          
                         frame[x][y] = 0
+    
+    def save_to_xml(self,file_path:str = None):
+        root = ET.Element('data')
+        label_node = ET.SubElement(root,'Label')
+        label_node.text = self._label
+        fps_node = ET.SubElement(root,'FPS')
+        fps_node.text = str(self._framerate)
+        for frame in self._pre_frames:
+            root.append(frame.create_xml_node())
+        for frame in self._frames:
+            root.append(frame.create_xml_node())
+        for frame in self._post_frames:
+            root.append(frame.create_xml_node())
+        if file_path is not None:
+            tree = ET.ElementTree(root)
+            tree.write(file_path)
+        return root
+            
 
 def get_final_matrix(interpolation_frames, filename):
     """
@@ -154,10 +188,13 @@ def get_matrix_list(interpolation_frames, filename):
     return data.get_matrices()
 
 if __name__ == "__main__":
-    data = VideoData(4)
+    data = VideoData(4,32,["RWrist","LWrist"])
     data.load_xml_file("../process_results/test.xml")
-    matrix_list = data.get_matrices()
-    for matrix in matrix_list[:9]:
-        plt.figure()
-        plt.imshow(matrix, cmap='gray')
-        plt.show()
+
+    data.save_to_xml("../process_results/test_s.xml")
+    
+    #matrix_list = data.get_matrices()
+    #for matrix in matrix_list[:9]:
+    #    plt.figure()
+    #    plt.imshow(matrix, cmap='gray')
+    #    plt.show()

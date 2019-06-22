@@ -28,3 +28,9 @@ KEYPOINTS_DICT = {
     "RHeel": 24,
     "Background": 25
 }
+
+def get_all_keypoints_list():
+    return ['Nose', 'Neck', 'RShoulder', 'RElbow', 'RWrist',        \
+        'LShoulder', 'LElbow', 'LWrist', 'MidHip', 'RHip', 'RKnee', \
+        'RAnkle', 'LHip', 'LKnee', 'LAnkle', 'REye', 'LEye',        \
+        'REar', 'LEar']
