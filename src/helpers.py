@@ -84,7 +84,7 @@ def train_autoencoder(img_size=CONFIG["matrix_size"], batch_size=CONFIG["batch_s
         for data in dataloader:
             img, _ = data
             img = img.view(img.size(0), -1)
-            img = torch.Variable(img).cuda()
+            img = torch.autograd.Variable(img).cuda()
             # ===================forward=====================
             output = autoencoder(img)
             loss = criterion(output, img)
