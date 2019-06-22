@@ -1,6 +1,7 @@
 import time
 from typing import Tuple
 
+import cv2
 import imutils
 
 from ml.autoencoder import *
