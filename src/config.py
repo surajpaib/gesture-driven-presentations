@@ -31,7 +31,7 @@ CONFIG = {
     "result_dir_7": "Processing_Results_Reset_Start_Stop_7",
     "label": "Start_Stop",
     
-    # autoencoder_new.py
+    # autoencoder.py
     "autoencoder_img_path": ".\\autoencoder_img",
     "latent_space_dim": 10,
     "batch_size": 32,

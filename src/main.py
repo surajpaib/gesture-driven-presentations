@@ -3,14 +3,14 @@ from typing import Tuple
 
 import imutils
 
-from ml.autoencoder_new import *
+from ml.autoencoder import *
+from ml.classifier import Classifier
 from ml.correlation_classifier import CorrelationClassifier
 from openpose_utils import *
 from video_processing.frame_data import FrameData
-from video_processing.video_data import VideoData
 from video_processing.keypoints import get_all_keypoints_list
+from video_processing.video_data import VideoData
 from wrappers import PowerpointWrapper
-from config import CONFIG
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -78,14 +78,18 @@ if __name__ == "__main__":
     img_size = CONFIG["matrix_size"]
     used_keypoints = CONFIG["used_keypoints"]
     confidence_threshold = CONFIG["confidence_threshold"]
-    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold, matrix_size=img_size)
+    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold,
+                           matrix_size=img_size)
 
     # Correlation-based "classifier" initialisation.
     correlation_classifier = CorrelationClassifier()
 
-    # Load the autoencoder.
+    # Load the models
     matrix_vertical_crop = CONFIG["matrix_vertical_crop"]
     autoencoder = Autoencoder(train_data_shape=(img_size * (img_size - matrix_vertical_crop)))
+    classifier = Classifier(4)
+
+    # autoencoder.train()
     autoencoder.load_state()
 
     # Keep looping, until interrupted by a Q keypress.
@@ -119,7 +123,7 @@ if __name__ == "__main__":
                 kernel_size = CONFIG["kernel_size"]
                 kernel = np.ones((kernel_size, kernel_size), np.uint8)
                 interpolated_frame = cv2.dilate(interpolated_frame, kernel, iterations=1)
-                interpolated_frame_resized = cv2.resize(interpolated_frame_dilated, (320, 320))
+                interpolated_frame_resized = cv2.resize(interpolated_frame, (320, 320))
             else:
                 interpolated_frame_resized = cv2.resize(interpolated_frame, (320, 320))
             cv2.imshow("Interpolated frame", interpolated_frame_resized)
@@ -203,6 +207,8 @@ if __name__ == "__main__":
             print("BIG ERROR", mse_error)
         else:
             print("SMALL ERROR", mse_error)
+            gesture = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor))
+            print("GESTURE DONE", gesture)
 
 # Clean up.
 camera.release()

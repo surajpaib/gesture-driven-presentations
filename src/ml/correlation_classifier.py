@@ -4,11 +4,14 @@ import os
 import numpy as np
 from scipy import signal
 
-from video_processing.video_data import VideoData
 from config import CONFIG
+from video_processing.video_data import VideoData
+
 
 class CorrelationClassifier:
-    def __init__(self, dataset_path=CONFIG["correlation_classifier_dataset"], used_keypoints=CONFIG["used_keypoints"], interpolations_frames=CONFIG["interpolation_frames"], noise_frames=CONFIG["noise_frames"], matrix_size=CONFIG["matrix_size"], confidence_threshold=CONFIG["confidence_threshold"]):
+    def __init__(self, dataset_path=CONFIG["correlation_classifier_dataset"], used_keypoints=CONFIG["used_keypoints"],
+                 interpolations_frames=CONFIG["interpolation_frames"], noise_frames=CONFIG["noise_frames"],
+                 matrix_size=CONFIG["matrix_size"], confidence_threshold=CONFIG["confidence_threshold"]):
 
         # Settings to be passed to VideoData objects. Should probably match what is used for
         # the runtime VideoData.
