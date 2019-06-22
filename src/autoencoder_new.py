@@ -54,7 +54,7 @@ def to_img(x):
 
 def load_train_data(img_size=32, batch_size=32):
     # Autoencoder does not have labels
-    train_data, train_labels = load_video_data_labels(7, 2, img_size)
+    train_data, train_labels = create_video_data_labels(7, 2, img_size)
     p = np.random.permutation(len(train_data))
     train_data, train_labels = train_data[p], train_labels[p]
     # np.random.shuffle(train_data)
@@ -74,7 +74,7 @@ def train_model(img_size=32, batch_size=32):
     train_data, train_labels, dataloader = load_train_data(img_size, batch_size)
     num_epochs = 100
     learning_rate = 1e-3
-    model = Autoencoder(train_data.shape[1] * train_data.shape[2]).cuda()
+    model = Autoencoder(train_data.shape[1] * train_data.shape[2])
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(
         model.parameters(), lr=learning_rate, weight_decay=1e-5)
@@ -82,7 +82,7 @@ def train_model(img_size=32, batch_size=32):
         for data in dataloader:
             img, _ = data
             img = img.view(img.size(0), -1)
-            img = Variable(img).cuda()
+            img = Variable(img)
             # ===================forward=====================
             output = model(img)
             loss = criterion(output, img)
@@ -104,4 +104,5 @@ def train_model(img_size=32, batch_size=32):
     return model
 
 
-# train_model()
+train_model()
+

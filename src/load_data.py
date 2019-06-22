@@ -12,9 +12,9 @@ from keras.preprocessing.image import load_img
 from keras.preprocessing.image import img_to_array
 from keras.preprocessing.image import ImageDataGenerator
 
-BATCH_SIZE = 9
+BATCH_SIZE = 900
 def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size, kernel_size=2):
-    xml_folder = '../some_xml_file'
+    xml_folder = '../xml_files'
     broken_videos_path = 'broken_videos.txt'
     data = []
     labels = []
@@ -39,11 +39,11 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
                     broken_videos.write(file + '\n')
                     continue
                 data.append(cv2.dilate(frame, kernel, iterations=1))
-                plt.imshow(data[-1], cmap='gray')
-                plt.title("name = " + file)
+                #plt.imshow(data[-1], cmap='gray')
+                #plt.title("name = " + file)
                 #plt.figure()
-                plt.savefig('../not_augmented/' + file + '.png')
-                plt.close()
+                #plt.savefig('../not_augmented/' + file + '.png')
+                #plt.close()
 
                 #print('Folder:', folder,'File:', file)
                 #print(np.linalg.norm(np.array(data[-1])))
@@ -72,8 +72,8 @@ def create_video_data_labels(interpolation_frames, noise_parameters, matrix_size
             #     plt.show()
         print(folder, "folder done. Label =", label)
     X_augmented, y_augmented = data_augmentation(data, labels, BATCH_SIZE)
-    data.append(X_augmented)
-    labels.append(y_augmented)
+    data = np.append(data, X_augmented, axis = 0)
+    labels = labels + y_augmented
     print("Smallest matrix size is", min_data)
     return np.array(data), np.array(labels)
 
@@ -110,14 +110,17 @@ def data_augmentation(data, labels, batch_size):
     # fit parameters from data
     datagen.fit(X_train)
     #Initialize the list of the output (the augmented data)
-    X = []
     y = []
     # configure batch size and retrieve one batch of images
-    for X_batch, y_batch in datagen.flow(X_train, y_train, batch_size=9):
-        for i in range(0,9):
-            X.append(X_batch[i].reshape(22, 32).tolist())
-            y.append(y_batch[i].tolist())
-
+    for X_batch, y_batch in datagen.flow(X_train, y_train, batch_size=BATCH_SIZE):
+        for i in range(0,BATCH_SIZE):
+            reshape = X_batch[i].reshape(1,22, 32)
+            if i == 0:
+                X = reshape
+                y.append(y_batch[i])
+                continue
+            X = np.append(X,reshape,axis=0)
+            y.append(y_batch[i])
         #visualize_augmented_data(X_batch, y_batch)
         break
     #X = np.array(X)
@@ -164,15 +167,15 @@ def load_video_data_labels(interpolation_frames, noise_parameters, matrix_size=3
 #     plt.figure()
 #     plt.show()
 
-data, labels = create_video_data_labels(7, 2, 32)
+#data, labels = create_video_data_labels(7, 2, 32)
 
-for i in range(0, len(data)-1):
+#for i in range(0, len(data)-1):
     #plt.subplot(1, len(data), i+1)
-    plt.imshow(data[i].reshape(22, 32), cmap=plt.get_cmap('gray'))
-    if labels[i] == 1:
-        plt.title('Lprev')
-    if labels[i] == 2:
-        plt.title('StartStop')
-    plt.show()
-# show the plot
-#plt.show()
+#    plt.imshow(data[i].reshape(22, 32), cmap=plt.get_cmap('gray'))
+#    if labels[i] == 1:
+#        plt.title('Lprev')
+#    if labels[i] == 2:
+#        plt.title('StartStop')
+#    plt.show()
+## show the plot
+##plt.show()
