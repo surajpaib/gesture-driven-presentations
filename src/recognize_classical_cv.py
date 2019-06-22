@@ -2,16 +2,17 @@
 import cv2
 import imutils
 import numpy as np
-
-from wrappers import PowerpointWrapper, PresentationWrapper
 from sklearn.metrics import pairwise
+
+from wrappers import PowerpointWrapper
 
 # global variables
 bg = None
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
 # Function - To find the running average over the background
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 def run_avg(image, accumWeight):
     global bg
     # initialize the background
@@ -22,9 +23,10 @@ def run_avg(image, accumWeight):
     # compute weighted average, accumulate it and update the background
     cv2.accumulateWeighted(image, bg, accumWeight)
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
 # Function - To segment the region of hand in the image
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 def segment(image, threshold=25):
     global bg
     # find the absolute difference between background and current frame
@@ -44,68 +46,70 @@ def segment(image, threshold=25):
         segmented = max(cnts, key=cv2.contourArea)
         return (thresholded, segmented)
 
-#-------------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------------
 # Function - To count the number of fingers in the segmented hand region
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 def count(thresholded, segmented):
-	# find the convex hull of the segmented hand region
-	chull = cv2.convexHull(segmented)
+    # find the convex hull of the segmented hand region
+    chull = cv2.convexHull(segmented)
 
-	# find the most extreme points in the convex hull
-	extreme_top    = tuple(chull[chull[:, :, 1].argmin()][0])
-	extreme_bottom = tuple(chull[chull[:, :, 1].argmax()][0])
-	extreme_left   = tuple(chull[chull[:, :, 0].argmin()][0])
-	extreme_right  = tuple(chull[chull[:, :, 0].argmax()][0])
+    # find the most extreme points in the convex hull
+    extreme_top = tuple(chull[chull[:, :, 1].argmin()][0])
+    extreme_bottom = tuple(chull[chull[:, :, 1].argmax()][0])
+    extreme_left = tuple(chull[chull[:, :, 0].argmin()][0])
+    extreme_right = tuple(chull[chull[:, :, 0].argmax()][0])
 
-	# find the center of the palm
-	cX = (extreme_left[0] + extreme_right[0]) / 2
-	cY = (extreme_top[1] + extreme_bottom[1]) / 2
+    # find the center of the palm
+    cX = (extreme_left[0] + extreme_right[0]) / 2
+    cY = (extreme_top[1] + extreme_bottom[1]) / 2
 
-	# find the maximum euclidean distance between the center of the palm
-	# and the most extreme points of the convex hull
-	distance = pairwise.euclidean_distances([(cX, cY)], Y=[extreme_left, extreme_right, extreme_top, extreme_bottom])[0]
-	maximum_distance = distance[distance.argmax()]
-	
-	# calculate the radius of the circle with 80% of the max euclidean distance obtained
-	radius = int(0.75 * maximum_distance)
-	
-	# find the circumference of the circle
-	circumference = (2 * np.pi * radius)
+    # find the maximum euclidean distance between the center of the palm
+    # and the most extreme points of the convex hull
+    distance = pairwise.euclidean_distances([(cX, cY)], Y=[extreme_left, extreme_right, extreme_top, extreme_bottom])[0]
+    maximum_distance = distance[distance.argmax()]
 
-	# take out the circular region of interest which has 
-	# the palm and the fingers
-	circular_roi = np.zeros(thresholded.shape[:2], dtype="uint8")
-	
-	# draw the circular ROI
-	cv2.circle(circular_roi, (int(cX), int(cY)), radius, 255, 1)
-	
-	# take bit-wise AND between thresholded hand using the circular ROI as the mask
-	# which gives the cuts obtained using mask on the thresholded hand image
-	circular_roi = cv2.bitwise_and(thresholded, thresholded, mask=circular_roi)
+    # calculate the radius of the circle with 80% of the max euclidean distance obtained
+    radius = int(0.75 * maximum_distance)
 
-	# compute the contours in the circular ROI
-	(_, cnts, _) = cv2.findContours(circular_roi.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # find the circumference of the circle
+    circumference = (2 * np.pi * radius)
 
-	# initalize the finger count
-	count = 0
+    # take out the circular region of interest which has
+    # the palm and the fingers
+    circular_roi = np.zeros(thresholded.shape[:2], dtype="uint8")
 
-	# loop through the contours found
-	for c in cnts:
-		# compute the bounding box of the contour
-		(x, y, w, h) = cv2.boundingRect(c)
+    # draw the circular ROI
+    cv2.circle(circular_roi, (int(cX), int(cY)), radius, 255, 1)
 
-		# increment the count of fingers only if -
-		# 1. The contour region is not the wrist (bottom area)
-		# 2. The number of points along the contour does not exceed
-		#     25% of the circumference of the circular ROI
-		if ((cY + (cY * 0.25)) > (y + h)) and ((circumference * 0.25) > c.shape[0]):
-			count += 1
+    # take bit-wise AND between thresholded hand using the circular ROI as the mask
+    # which gives the cuts obtained using mask on the thresholded hand image
+    circular_roi = cv2.bitwise_and(thresholded, thresholded, mask=circular_roi)
 
-	return count, (int(cX), int(cY), radius)
+    # compute the contours in the circular ROI
+    (_, cnts, _) = cv2.findContours(circular_roi.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-#-------------------------------------------------------------------------------
+    # initalize the finger count
+    count = 0
+
+    # loop through the contours found
+    for c in cnts:
+        # compute the bounding box of the contour
+        (x, y, w, h) = cv2.boundingRect(c)
+
+        # increment the count of fingers only if -
+        # 1. The contour region is not the wrist (bottom area)
+        # 2. The number of points along the contour does not exceed
+        #     25% of the circumference of the circular ROI
+        if ((cY + (cY * 0.25)) > (y + h)) and ((circumference * 0.25) > c.shape[0]):
+            count += 1
+
+    return count, (int(cX), int(cY), radius)
+
+
+# -------------------------------------------------------------------------------
 # Main function
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 if __name__ == "__main__":
     # initialize accumulated weight
     accumWeight = 0.5
@@ -123,8 +127,8 @@ if __name__ == "__main__":
     calibrated = False
 
     # video recorder
-    video_writer = cv2.VideoWriter('testvideo.avi', cv2.VideoWriter_fourcc(*'XVID'), 25, 
-           (640,480),True)
+    video_writer = cv2.VideoWriter('testvideo.avi', cv2.VideoWriter_fourcc(*'XVID'), 25,
+                                   (640, 480), True)
 
     # keep looping, until interrupted
 
@@ -134,7 +138,7 @@ if __name__ == "__main__":
 
     presentation_opened = False
 
-    while(True):
+    while (True):
         # get the current frame
         (grabbed, frame) = camera.read()
         video_writer.write(frame)
@@ -163,11 +167,11 @@ if __name__ == "__main__":
         hand_circle = (0, 0, 0)
         if num_frames < 30:
             run_avg(gray, accumWeight)
-            #if num_frames == 1:
+            # if num_frames == 1:
             #    print("[STATUS] please wait! calibrating...")
-            #elif num_frames == 29:
-			#    print("[STATUS] calibration successfull...")   
-            pass    
+            # elif num_frames == 29:
+            #    print("[STATUS] calibration successfull...")
+            pass
         else:
             # segment the hand region
             hand = segment(gray)
@@ -192,19 +196,19 @@ if __name__ == "__main__":
                 # count the number of fingers
                 fingers, hand_circle = count(thresholded, segmented)
 
-                cv2.putText(clone, str(fingers), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+                cv2.putText(clone, str(fingers), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
                 print("Number of fingers: {}".format(fingers))
-                
+
                 # show the thresholded image
                 cv2.imshow("Thesholded", thresholded)
 
                 if fingers == old_fingers:
                     counter += 1
-                    #print("Counter increase")
+                    # print("Counter increase")
                 else:
                     counter = 0
                     old_fingers = fingers
-                    #print("Counter reset")
+                    # print("Counter reset")
 
                 if fingers_recognized != fingers and counter >= 20:
                     print("FINGERS: {}".format(fingers))
@@ -216,7 +220,7 @@ if __name__ == "__main__":
                         presentation.next_slide()
 
         # draw the segmented hand
-        cv2.rectangle(clone, (left, top), (right, bottom), (0,255,0), 2)
+        cv2.rectangle(clone, (left, top), (right, bottom), (0, 255, 0), 2)
         cv2.circle(clone, (right + hand_circle[0], top + hand_circle[1]), hand_circle[2], (255, 0, 0), 2)
 
         # increment the number of frames

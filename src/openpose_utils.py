@@ -1,12 +1,12 @@
-import sys
 import os
+import sys
 from sys import platform
 from typing import List, Optional
 
 import numpy as np
 
-from video_processing.keypoints import KEYPOINTS_DICT
 from config import CONFIG
+from video_processing.keypoints import KEYPOINTS_DICT
 
 # Import Openpose (Windows/Ubuntu/OSX)
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -77,7 +77,8 @@ def get_hand_rectangles_from_datum(datum: op.Datum) -> Optional[List[op.Rectangl
         # No person detected.
         return None
 
-def get_all_keypoints_from_datum(datum: op.Datum)  -> Optional[List[List[float]]]:
+
+def get_all_keypoints_from_datum(datum: op.Datum) -> Optional[List[List[float]]]:
     """
     Returns all keypoints
     Each returned keypoint is a list of three values: x, y and confidence.
@@ -90,6 +91,7 @@ def get_all_keypoints_from_datum(datum: op.Datum)  -> Optional[List[List[float]]
         return None
 
     return poseKeypoints[0]
+
 
 def get_keypoints_from_datum(datum: op.Datum, keypoints: List[str]) -> Optional[List[List[float]]]:
     """
