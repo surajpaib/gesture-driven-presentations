@@ -4,12 +4,14 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision.utils import save_image
 
+import sys
+sys.path.append('./')
 from video_processing.load_data import *
 
 if not os.path.exists('./autoencoder_img'):
     os.mkdir('./autoencoder_img')
 
-latent_space_dim = 20
+latent_space_dim = 10
 
 
 class Autoencoder(nn.Module):
@@ -32,7 +34,9 @@ class Autoencoder(nn.Module):
             nn.Tanh())
 
     def forward(self, x):
-        return self.decoder(self.encoder(x))
+        encoded = self.encoder(x)
+        decoded = self.decoder(encoded)
+        return decoded
 
     def get_latent_space(self, x):
         return self.encoder(x)
@@ -52,9 +56,9 @@ def to_img(x):
     return x
 
 
-def load_train_data(img_size=32, batch_size=32):
+def load_train_data(used_keypoints, img_size=32, batch_size=32):
     # Autoencoder does not have labels
-    train_data, train_labels = load_video_data_labels(7, 2, img_size)
+    train_data, train_labels = load_video_data_labels(7, 2, used_keypoints, matrix_size=img_size)
     p = np.random.permutation(len(train_data))
     train_data, train_labels = train_data[p], train_labels[p]
 
@@ -68,10 +72,8 @@ def load_train_data(img_size=32, batch_size=32):
 
     return train_data, train_labels, dataloader
 
-
-def train_model(img_size=32, batch_size=32):
-    train_data, train_labels, dataloader = load_train_data(img_size, batch_size)
-    num_epochs = 5
+def train_model(img_size=32, batch_size=32, num_epochs=20, used_keypoints=["RShoulder", "LShoulder", "RElbow", "LElbow", "RWrist", "LWrist"]):
+    train_data, train_labels, dataloader = load_train_data(used_keypoints, img_size, batch_size)
     learning_rate = 1e-3
     autoencoder = Autoencoder(train_data.shape[1] * train_data.shape[2]).cuda()
     criterion = nn.MSELoss()
@@ -92,7 +94,7 @@ def train_model(img_size=32, batch_size=32):
         # ===================log========================
         print('epoch [{}/{}], loss:{:.4f}'
               .format(epoch + 1, num_epochs, loss.data.cpu().numpy()))
-        if epoch % 10 == 0:
+        if epoch % 5 == 0:
             pic = to_img(output.cpu().data)
             save_image(pic, './autoencoder_img/image_{}_output.png'.format(epoch))
 
@@ -103,7 +105,7 @@ def train_model(img_size=32, batch_size=32):
     return autoencoder
 
 def main():
-    train_model()
+    train_model(batch_size=64, num_epochs=20, used_keypoints=["RWrist", "LWrist"])
 
 if __name__== "__main__":
     main()

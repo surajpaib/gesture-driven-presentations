@@ -8,7 +8,7 @@ from video_processing.video_data import VideoData
 
 
 class CorrelationClassifier:
-    def __init__(self, dataset_path, interpolations_frames=4, noise_frames=2, matrix_size=64, confidence_threshold=0.5):
+    def __init__(self, dataset_path, used_keypoints, interpolations_frames=4, noise_frames=2, matrix_size=64, confidence_threshold=0.5):
 
         # Settings to be passed to VideoData objects. Should probably match what is used for
         # the runtime VideoData.
@@ -16,6 +16,7 @@ class CorrelationClassifier:
         self.interpolation_frames = interpolations_frames
         self.confidence_threshold = 0.5
         self.matrix_size = 64
+        self.used_keypoints = used_keypoints
 
         # Load the dataset (folders of XML files).
         self._load_dataset(dataset_path)
@@ -42,6 +43,7 @@ class CorrelationClassifier:
             for filename in os.listdir(gesture_path):
                 if filename.endswith('.xml'):
                     video_data = VideoData(self.interpolation_frames, matrix_size=self.matrix_size,
+                                           used_keypoints=self.used_keypoints,
                                            noise_frames=self.noise_frames,
                                            confidence_threshold=self.confidence_threshold)
                     video_data.load_xml_file(os.path.join(gesture_path, filename))
