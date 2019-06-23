@@ -8,7 +8,7 @@ CONFIG = {
     "model_pose": "COCO",
     "net_resolution": "176x-1",
 
-    "interpolation_frames": 7,
+    "interpolation_frames": 8,
     "matrix_size": 32,
     "used_keypoints": ["RWrist", "LWrist"],
     "confidence_threshold": 0.3,
@@ -35,7 +35,7 @@ CONFIG = {
     "autoencoder_img_path": ".\\autoencoder_img",
     "latent_space_dim": 10,
     "batch_size": 32,
-    "num_epochs": 20,
+    "num_epochs": 200,
     "learning_rate": 1e-3,
     "weight_decay": 1e-5,
 
