@@ -87,11 +87,19 @@ if __name__ == "__main__":
 
     # Load the models
     matrix_vertical_crop = CONFIG["matrix_vertical_crop"]
+
     autoencoder = Autoencoder(train_data_shape=(img_size * (img_size - matrix_vertical_crop)))
+    autoencoder.load_state()
+
+    # from helpers import train_classifier
+    # classifier = train_classifier()
+
     classifier = Classifier(4)
+    classifier.load_state()
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # autoencoder.train()
-    autoencoder.load_state()
 
     # Keep looping, until interrupted by a Q keypress.
     while True:
@@ -204,12 +212,17 @@ if __name__ == "__main__":
         cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
         mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
             axis=None)
-        if mse_error > CONFIG["reconstruction_error_threshold"]:
-            print("BIG ERROR", mse_error)
-        else:
-            print("SMALL ERROR", mse_error)
-            gesture = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor))
-            print("GESTURE DONE", gesture)
+        classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+        gesture = np.argmax(classes)
+        if classes[gesture] > 0.7:
+            print("GESTURE DONE", gesture, "CLASSES", classes)
+
+    # if mse_error > CONFIG["reconstruction_error_threshold"]:
+        #     print("BIG ERROR", mse_error)
+        # else:
+        #     print("SMALL ERROR", mse_error)
+        #     gesture = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor))
+        #     print("GESTURE DONE", gesture)
 
 # Clean up.
 camera.release()

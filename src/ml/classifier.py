@@ -12,7 +12,8 @@ class Classifier(nn.Module):
         # Input channel 1 because its gray scale
         self.layer = nn.Sequential(
             nn.Linear(CONFIG["latent_space_dim"], n_classes),
-            nn.ReLU())
+            nn.ReLU(),
+            nn.Softmax())
         self.path = os.path.dirname(os.path.realpath(__file__)).split("src")[0].replace("\\", "/") + \
                     'classifier_' + str(n_classes) + '.pth'
 
