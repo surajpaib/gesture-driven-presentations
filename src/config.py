@@ -33,11 +33,10 @@ CONFIG = {
     
     # autoencoder.py
     "autoencoder_img_path": ".\\autoencoder_img",
-    "latent_space_dim": 10,
+    "latent_space_dim": 100,
     "batch_size": 32,
     "num_epochs": 200,
     "learning_rate": 1e-3,
     "weight_decay": 1e-5,
-
     "noise_frames": 2,
 }

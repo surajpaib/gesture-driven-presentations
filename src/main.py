@@ -55,6 +55,17 @@ def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarra
     # TODO
     pass
 
+def calculate_pixel_diff(orig_image, reconstructed_image):
+    error = 0
+    for y in range(len(orig_image)):
+        for x in range(len(orig_image[y])):
+            orig_val = orig_image[y][x]
+            reconstructed_val = reconstructed_image[y][x]
+            if orig_val == 0 and not reconstructed_val == 0:
+                error += 1
+            elif not (orig_val != 0 and reconstructed_val != 0):
+                error += 1
+    return error
 
 # -------------------------------------------------------------------------------
 # Main function
@@ -83,7 +94,7 @@ if __name__ == "__main__":
                            matrix_size=img_size)
 
     # Correlation-based "classifier" initialisation.
-    correlation_classifier = CorrelationClassifier()
+    # correlation_classifier = CorrelationClassifier()
 
     # Load the models
     matrix_vertical_crop = CONFIG["matrix_vertical_crop"]
@@ -138,8 +149,8 @@ if __name__ == "__main__":
             cv2.imshow("Interpolated frame", interpolated_frame_resized)
 
             # Get prediction from cross-correlation classifier?
-            label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
-            print(label, lowest_distance, highest_magnitude)
+            # label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
+            # print(label, lowest_distance, highest_magnitude)
 
         if keypoints is not None:
             # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
@@ -210,12 +221,13 @@ if __name__ == "__main__":
         interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
         decoded = autoencoder.forward(interpolated_frame_tensor)
         cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
-        mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
-            axis=None)
-        classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
-        gesture = np.argmax(classes)
-        if classes[gesture] > 0.7:
-            print("GESTURE DONE", gesture, "CLASSES", classes)
+        reconstruction_error = calculate_pixel_diff(interpolated_frame, decoded)
+        #mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
+        #    axis=None)
+        #classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+        #gesture = np.argmax(classes)
+        #if classes[gesture] > 0.7:
+        #    print("GESTURE DONE", gesture, "CLASSES", classes)
 
     # if mse_error > CONFIG["reconstruction_error_threshold"]:
         #     print("BIG ERROR", mse_error)
