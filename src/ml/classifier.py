@@ -1,19 +1,27 @@
-import torch
-import numpy as np
 import os
 
-from video_processing.load_data import load_video_data_labels
-from ml.autoencoder_new import *
+import torch
+from torch import nn
+
 from config import CONFIG
 
-def get_latent_space(img_size=CONFIG["matrix_size"], batch_size=CONFIG["batch_size"]):
-    train_data, train_labels, dataloader = load_train_data(img_size, batch_size)
 
-    autoencoder = Autoencoder(train_data.shape[1] * train_data.shape[2]).cuda()
-    latent_space = autoencoder.get_latent_space(train_data)
+class Classifier(nn.Module):
+    def __init__(self, n_classes):
+        super(Classifier, self).__init__()
+        # Input channel 1 because its gray scale
+        self.layer = nn.Sequential(
+            nn.Linear(CONFIG["latent_space_dim"], n_classes),
+            nn.ReLU(),
+            nn.Softmax())
+        self.path = os.path.dirname(os.path.realpath(__file__)).split("src")[0].replace("\\", "/") + \
+                    'classifier_' + str(n_classes) + '.pth'
 
-    return latent_space
+    def forward(self, x):
+        return self.layer(x)
 
+    def save_state(self):
+        torch.save(self.state_dict(), self.path)
 
-data = get_latent_space()
-print("HELLO")
+    def load_state(self):
+        self.load_state_dict(torch.load(self.path))

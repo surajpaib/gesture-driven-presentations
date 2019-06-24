@@ -2,16 +2,16 @@ import time
 from typing import Tuple
 from copy import deepcopy
 
+import cv2
 import imutils
 
-from ml.autoencoder_new import *
-from ml.correlation_classifier import CorrelationClassifier
+from ml.autoencoder import *
+from ml.classifier import Classifier
 from openpose_utils import *
 from video_processing.frame_data import FrameData
-from video_processing.video_data import VideoData
 from video_processing.keypoints import get_all_keypoints_list
+from video_processing.video_data import VideoData
 from wrappers import PowerpointWrapper
-from config import CONFIG
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 
@@ -55,6 +55,31 @@ def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarra
     # TODO
     pass
 
+def count_non_zero(flattened_data):
+    count = 0
+    flattened_data = np.round(flattened_data,1)
+    for i in range(len(flattened_data)):
+        if flattened_data[i] != 0:
+            count += 1
+    return count
+
+
+def calculate_pixel_diff(orig_image, reconstructed_image):
+    error = 0
+    # print(orig_image.shape())
+    # print(reconstructed_image.shape())
+    reconstructed_image = np.round(reconstructed_image[0, :], 1)
+    for pos in range(len(orig_image)):
+        orig_val = orig_image[pos]
+        reconstructed_val = reconstructed_image[pos]
+        if orig_val == reconstructed_val:
+            continue
+        elif (orig_val == 0) and not (reconstructed_val == 0):
+            error += 1
+        elif not (orig_val != 0 and reconstructed_val != 0):
+            error += 1
+    return error
+
 
 def save_matrix(event,x,y,flags,param):
     """
@@ -89,15 +114,29 @@ if __name__ == "__main__":
     img_size = CONFIG["matrix_size"]
     used_keypoints = CONFIG["used_keypoints"]
     confidence_threshold = CONFIG["confidence_threshold"]
-    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold, matrix_size=img_size)
+    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold,
+                           matrix_size=img_size)
 
     # Correlation-based "classifier" initialisation.
-    correlation_classifier = CorrelationClassifier()
+    # correlation_classifier = CorrelationClassifier()
 
-    # Load the autoencoder.
+    # Load the models
     matrix_vertical_crop = CONFIG["matrix_vertical_crop"]
+
     autoencoder = Autoencoder(train_data_shape=(img_size * (img_size - matrix_vertical_crop)))
     autoencoder.load_state()
+
+    # from helpers import train_classifier
+    # classifier = train_classifier()
+
+    classifier = Classifier(4)
+    classifier.load_state()
+    detected = False
+    detected_stop = 0
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # autoencoder.train()
 
     # Keep looping, until interrupted by a Q keypress.
     while True:
@@ -130,9 +169,8 @@ if __name__ == "__main__":
                 kernel_size = CONFIG["kernel_size"]
                 kernel = np.ones((kernel_size, kernel_size), np.uint8)
                 interpolated_frame = cv2.dilate(interpolated_frame, kernel, iterations=1)
-                interpolated_frame_resized = cv2.resize(interpolated_frame, (interpolated_frame.shape[1] * 10, interpolated_frame.shape[0] * 10))
             else:
-                interpolated_frame_resized = cv2.resize(interpolated_frame, (interpolated_frame.shape[1] * 10, interpolated_frame.shape[0] * 10))
+            interpolated_frame_resized = cv2.resize(interpolated_frame, (interpolated_frame.shape[1] * 10, interpolated_frame.shape[0] * 10))
             cv2.imshow("Interpolated frame", interpolated_frame_resized)
 
             # Get prediction from cross-correlation classifier
@@ -221,12 +259,45 @@ if __name__ == "__main__":
         interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
         decoded = autoencoder.forward(interpolated_frame_tensor)
         cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
-        mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
-            axis=None)
-        if mse_error > CONFIG["reconstruction_error_threshold"]:
-            print("BIG ERROR", mse_error)
-        else:
-            print("SMALL ERROR", mse_error)
+        reconstruction_error = calculate_pixel_diff(interpolated_frame.flatten(), decoded.data.numpy())
+        non_zero_orig = count_non_zero((interpolated_frame.flatten()))
+        # mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
+        #    axis=None)
+        # classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+        # gesture = np.argmax(classes)
+        # if classes[gesture] > 0.7:
+        #    print("GESTURE DONE", gesture, "CLASSES", classes)
+
+        if non_zero_orig > 8 and not detected:
+            if reconstruction_error > CONFIG["reconstruction_error_threshold"] or reconstruction_error < 10:
+                print("BIG ERROR", reconstruction_error)
+            else:
+                print("SMALL ERROR", reconstruction_error)
+                detected = True
+                classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+                gesture = np.argmax(classes)
+                if classes[gesture] > 0.7:
+                    detected = True
+                    if gesture == 0:
+                        presentation.previous_slide()
+                        print("PREVIOUS Slide")
+                    elif gesture == 1:
+                        presentation.close_slideshow()
+                        print("RESET")
+                    elif gesture == 2:
+                        presentation.next_slide()
+                        print("NEXT Slide")
+                    else:
+                        print("START/STOP")
+
+        # else:
+        #     print("Not enough movement")
+
+        if detected or detected_stop > 0:
+            detected += 1
+            if detected >= 20:
+                detected_stop = 0
+                detected = False
 
 # Clean up.
 camera.release()

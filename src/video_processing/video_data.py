@@ -28,7 +28,7 @@ class VideoData:
         self._used_keypoints = [KEYPOINTS_DICT[k] for k in used_keypoints]
         
         self._last_keypoint_list = []
-        while len(self._last_keypoint_list) < 19:
+        while len(self._last_keypoint_list) < 18:
             self._last_keypoint_list.append([])
 
         self.noise_frames = noise_frames
