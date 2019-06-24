@@ -1,3 +1,6 @@
+# Pycharm idea
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -106,3 +109,12 @@ venv.bak/
 # openpose
 openpose/
 data/
+
+videos/
+videos_output/
+src/data/
+src/video_data.py
+dataset/
+xml_files/
+video_data_models/
+src/autoencoder_img

@@ -1,9 +1,11 @@
 import os
-import win32com.client
+
 import pyautogui
 from pynput.keyboard import Key, Controller
+import win32com.client
 
-class PresentationWrapper():
+
+class PresentationWrapper:
     def __init__(self, presentation):
         self.presentation = presentation
         self.spotlight = False
@@ -18,7 +20,7 @@ class PresentationWrapper():
 
     def next_slide(self):
         self.presentation.SlideShowWindow.View.Next()
-    
+
     def previous_slide(self):
         self.presentation.SlideShowWindow.View.Previous()
 
@@ -86,7 +88,8 @@ class PresentationWrapper():
         # self.keyboard.press(Key.f12)
         # self.keyboard.release(Key.f12)
 
-class PowerpointWrapper():
+
+class PowerpointWrapper:
     def __init__(self):
         self.application = None
 
@@ -94,7 +97,7 @@ class PowerpointWrapper():
         if self.application is None:
             self.application = win32com.client.Dispatch("PowerPoint.Application")
             self.application.Visible = 1
-    
+
     def open_presentation(self, filename) -> PresentationWrapper:
         if self.application is None:
             self.start_powerpoint()
