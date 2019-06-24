@@ -243,7 +243,7 @@ def train_classifier():
 def create_video_data_labels(interpolation_frames=CONFIG["interpolation_frames"],
                              noise_parameters=CONFIG["noise_frames"], used_keypoints=CONFIG["used_keypoints"],
                              matrix_size=CONFIG["matrix_size"], use_dilation=CONFIG["use_dilation"],
-                             kernel_size=CONFIG["kernel_size"], augmentation_batch=0):
+                             kernel_size=CONFIG["kernel_size"], augmentation_batch=900):
     """
     Load the xmls files and create images using interpolation and the labels assigned to each of the images.
 
@@ -402,6 +402,6 @@ def data_augmentation(data, labels, batch_size):
 #     plt.title("Label = " + str(train_labels[i]))
 #     plt.show()
 
-test_autoencoder_space()
-# train_autoencoder()
-# train_classifier()
+# test_autoencoder_space()
+train_autoencoder()
+train_classifier()
