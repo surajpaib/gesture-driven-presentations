@@ -125,6 +125,9 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+    wrapper = PowerpointWrapper()
+    presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+
     # autoencoder.train()
 
     # Keep looping, until interrupted by a Q keypress.
@@ -174,50 +177,50 @@ if __name__ == "__main__":
                 hand_segmentation(left_hand_region, right_hand_region)
 
         # Perform gesture recognition on the arm keypoints.
-        if keypoints is not None:
-            r_wrist = keypoints[KEYPOINTS_DICT["RWrist"]]
-            l_wrist = keypoints[KEYPOINTS_DICT["LWrist"]]
-            action = ""
-
-            # Only track if both wrists are seen with a confidence of > 0.3.
-            if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
-                r_wrist_x = r_wrist[0]
-                r_wrist_y = r_wrist[1]
-                l_wrist_x = l_wrist[0]
-                l_wrist_y = l_wrist[1]
-
-                # Display circles on the wrists.
-                cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
-                cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
-
-                # Left wrist: open/previous slide.
-                if l_wrist_x_old - l_wrist_x > 150:
-                    if not presentation_opened:
-                        action = "OPEN"
-                        wrapper = PowerpointWrapper()
-                        presentation = wrapper.open_presentation(CONFIG["presentation_path"])
-                        presentation.run_slideshow()
-                        presentation_opened = True
-                    else:
-                        action = "PREV"
-                        presentation.previous_slide()
-                l_wrist_x_old = l_wrist_x
-
-                # Right wrist: open/next slide.
-                if r_wrist_x - r_wrist_x_old > 150:
-                    if not presentation_opened:
-                        action = "OPEN"
-                        wrapper = PowerpointWrapper()
-                        presentation = wrapper.open_presentation(CONFIG["presentation_path"])
-                        presentation.run_slideshow()
-                        presentation_opened = True
-                    else:
-                        presentation.next_slide()
-                        action = "NEXT"
-                r_wrist_x_old = r_wrist_x
-
-            # Show if any action has been done.
-            cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        # if keypoints is not None:
+        #     r_wrist = keypoints[KEYPOINTS_DICT["RWrist"]]
+        #     l_wrist = keypoints[KEYPOINTS_DICT["LWrist"]]
+        #     action = ""
+        #
+        #     # Only track if both wrists are seen with a confidence of > 0.3.
+        #     if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
+        #         r_wrist_x = r_wrist[0]
+        #         r_wrist_y = r_wrist[1]
+        #         l_wrist_x = l_wrist[0]
+        #         l_wrist_y = l_wrist[1]
+        #
+        #         # Display circles on the wrists.
+        #         cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
+        #         cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
+        #
+        #         # Left wrist: open/previous slide.
+        #         if l_wrist_x_old - l_wrist_x > 150:
+        #             if not presentation_opened:
+        #                 action = "OPEN"
+        #                 wrapper = PowerpointWrapper()
+        #                 presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+        #                 presentation.run_slideshow()
+        #                 presentation_opened = True
+        #             else:
+        #                 action = "PREV"
+        #                 presentation.previous_slide()
+        #         l_wrist_x_old = l_wrist_x
+        #
+        #         # Right wrist: open/next slide.
+        #         if r_wrist_x - r_wrist_x_old > 150:
+        #             if not presentation_opened:
+        #                 action = "OPEN"
+        #                 wrapper = PowerpointWrapper()
+        #                 presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+        #                 presentation.run_slideshow()
+        #                 presentation_opened = True
+        #             else:
+        #                 presentation.next_slide()
+        #                 action = "NEXT"
+        #         r_wrist_x_old = r_wrist_x
+        #
+        #     # Show if any action has been done.
+        #     cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         # Stop measuring frame time and display FPS.
         end_frame_time = current_milli_time()
@@ -247,9 +250,10 @@ if __name__ == "__main__":
 
         if non_zero_orig > 8 and not detected:
             if reconstruction_error > CONFIG["reconstruction_error_threshold"] or reconstruction_error < 10:
-                print("BIG ERROR", reconstruction_error)
+                # print("BIG ERROR", reconstruction_error)
+                a = 1
             else:
-                print("SMALL ERROR", reconstruction_error)
+                # print("SMALL ERROR", reconstruction_error)
                 detected = True
                 classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
                 gesture = np.argmax(classes)
@@ -259,7 +263,7 @@ if __name__ == "__main__":
                         presentation.previous_slide()
                         print("PREVIOUS Slide")
                     elif gesture == 1:
-                        presentation.close_slideshow()
+                        # presentation.close_slideshow()
                         print("RESET")
                     elif gesture == 2:
                         presentation.next_slide()

@@ -259,11 +259,14 @@ def create_video_data_labels(interpolation_frames=CONFIG["interpolation_frames"]
     xml_folder = os.path.dirname(os.path.realpath(__file__)).split("src")[0].replace("\\", "/") + CONFIG[
         "xml_files_path"]
     data = []
+    good_videos_list = open('../good_videos.txt').read().splitlines()
     labels = []
     min_data = 99
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     for label, folder in enumerate(os.listdir(xml_folder)):
         for file in os.listdir(xml_folder + '/' + folder):
+            if file not in good_videos_list:
+                continue
             file_path = xml_folder + '/' + folder + '/' + file
             video_data = VideoData(interpolations_frames=interpolation_frames, matrix_size=matrix_size,
                                    used_keypoints=used_keypoints, noise_frames=noise_parameters)
