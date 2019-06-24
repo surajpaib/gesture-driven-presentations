@@ -334,11 +334,8 @@ if __name__ == "__main__":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     elif CONFIG["arm_gesture_classifier"] == "heuristics":
-        CONSIDERED_FRAMES = 10
-        START_STOP_REQUIRED_FRAMES = 5
-        ACCEPTABLE_DISTANCE_WRIST_SHIFT = 1.4 
-        ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT = 0.7
-        ACCEPTABLE_DISTANCE_WRIST_SHOULDER = 0.3
+        # Moved as global things for now. TODO: refactor a little bit and add stuff to config maybe?
+        pass
 
     else:
         print("Invalid config value for arm_gesture_classifier!")
@@ -441,7 +438,6 @@ if __name__ == "__main__":
                     pass
 
                 pause_stopwatch.start()
-
             ### END arm gesture detection.
 
             ### Hand gesture detection.
@@ -466,17 +462,16 @@ if __name__ == "__main__":
                         if hand_gesture_stopwatch.time_elapsed < CONFIG["hand_gesture_time_window_s"]:
                             majority_gesture = get_majority_hand_gesture(hand_gesture_history)
                             
-                            # If needed, perform an action on the presentation. TODO
+                            # If needed, perform an action on the presentation.
                             print("Hand: ", CLASS_DICT_INVERSE[majority_gesture])
 
                             # Restart the timer.
                             hand_gesture_stopwatch.start()
                         
-                    # If needed, move the mouse cursor. TODO
+                    # If needed, move the mouse cursor.
                     if presentation.zoom:
                         new_mouse_position = get_mouse_position(keypoints, mouse_x_positions, mouse_y_positions)
                         mouse.position = (new_mouse_position[0], new_mouse_position[1])
-
             ### END hand gesture detection.
 
         # Stop measuring frame time and display FPS.
