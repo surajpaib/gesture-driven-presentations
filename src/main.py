@@ -1,6 +1,7 @@
 import time
 import random
 from typing import List, Tuple
+from copy import deepcopy
 
 import cv2
 import imutils
@@ -26,6 +27,7 @@ from wrappers import PowerpointWrapper
 from ml.autoencoder import *
 from ml.classifier import Classifier
 from ml.correlation_classifier import CorrelationClassifier
+from openpose_utils import *
 from video_processing.frame_data import FrameData
 from video_processing.keypoints import get_all_keypoints_list, KEYPOINTS_DICT
 from video_processing.video_data import VideoData
@@ -273,6 +275,41 @@ def normalize_point(point_to_normalize, avg_dist, avg_point):
 
     return [nx,ny]
 
+def count_non_zero(flattened_data):
+    count = 0
+    flattened_data = np.round(flattened_data,1)
+    for i in range(len(flattened_data)):
+        if flattened_data[i] != 0:
+            count += 1
+    return count
+
+
+def calculate_pixel_diff(orig_image, reconstructed_image):
+    error = 0
+    # print(orig_image.shape())
+    # print(reconstructed_image.shape())
+    reconstructed_image = np.round(reconstructed_image[0, :], 1)
+    for pos in range(len(orig_image)):
+        orig_val = orig_image[pos]
+        reconstructed_val = reconstructed_image[pos]
+        if orig_val == reconstructed_val:
+            continue
+        elif (orig_val == 0) and not (reconstructed_val == 0):
+            error += 1
+        elif not (orig_val != 0 and reconstructed_val != 0):
+            error += 1
+    return error
+
+
+def save_matrix(event,x,y,flags,param):
+    """
+    Helper function used for data collection.
+    """
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        video_data = deepcopy(param)
+        video_data._frames = video_data._frames[-CONFIG["interpolation_frames"]:]
+        video_data.save_to_xml("../crosscorr/%s.xml" % time.time())
 
 # -------------------------------------------------------------------------------
 # Main function
@@ -318,15 +355,25 @@ if __name__ == "__main__":
                            matrix_size=img_size)
 
     # Correlation-based "classifier" initialisation.
-    correlation_classifier = CorrelationClassifier()
+    # correlation_classifier = CorrelationClassifier()
 
     # Load the models
     matrix_vertical_crop = CONFIG["matrix_vertical_crop"]
+
     autoencoder = Autoencoder(train_data_shape=(img_size * (img_size - matrix_vertical_crop)))
+    autoencoder.load_state()
+
+    # from helpers import train_classifier
+    # classifier = train_classifier()
+
     classifier = Classifier(4)
+    classifier.load_state()
+    detected = False
+    detected_stop = 0
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # autoencoder.train()
-    autoencoder.load_state()
 
     # Keep looping, until interrupted by a Q keypress.
     time_window = 500 # ms
@@ -568,6 +615,91 @@ if __name__ == "__main__":
 
         #     # Show if any action has been done.
         #     cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        if keypoints is not None:
+            # Build a FrameData object and add it to the VideoData to get the interpolation of the previous frames.
+            frame_data = FrameData.from_keypoints(keypoints)
+            video_data.add_frame(frame_data)
+
+            # Now get the last matrix of VideoData (which should be the last 4 frames, interpolated)
+            interpolated_frame = video_data.get_newest_matrix()
+
+            # Dilate the interpolated frame (if enabled).
+            if CONFIG["use_dilation"]:
+                kernel_size = CONFIG["kernel_size"]
+                kernel = np.ones((kernel_size, kernel_size), np.uint8)
+                interpolated_frame = cv2.dilate(interpolated_frame, kernel, iterations=1)
+            else:
+            interpolated_frame_resized = cv2.resize(interpolated_frame, (interpolated_frame.shape[1] * 10, interpolated_frame.shape[0] * 10))
+            cv2.imshow("Interpolated frame", interpolated_frame_resized)
+
+            # Get prediction from cross-correlation classifier
+            # label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
+            lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude = correlation_classifier.classify(interpolated_frame)
+            if lowest_distance_label == highest_magnitude_label:
+                if lowest_distance_label == "Reset7" and lowest_distance < 2 and highest_magnitude > 5:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "Reset"
+                if lowest_distance_label == "RNext7Mirror" and highest_magnitude > 2.5:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "RNext"
+                if lowest_distance_label == "LPrev7" and highest_magnitude > 3:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "LPrev"
+                if lowest_distance_label == "StartStop7" and lowest_distance < 2.5 and highest_magnitude > 5:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "StartStop"
+
+        if keypoints is not None:
+            # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
+            if hand_rectangles:
+                left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
+                hand_segmentation(left_hand_region, right_hand_region)
+
+        # Perform gesture recognition on the arm keypoints.
+        if keypoints is not None:
+            r_wrist = keypoints[KEYPOINTS_DICT["RWrist"]]
+            l_wrist = keypoints[KEYPOINTS_DICT["LWrist"]]
+            action = ""
+
+            # Only track if both wrists are seen with a confidence of > 0.3.
+            if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3):
+                r_wrist_x = r_wrist[0]
+                r_wrist_y = r_wrist[1]
+                l_wrist_x = l_wrist[0]
+                l_wrist_y = l_wrist[1]
+
+                # Display circles on the wrists.
+                cv2.circle(frame, (l_wrist_x, l_wrist_y), 10, (0, 0, 255), -1)
+                cv2.circle(frame, (r_wrist_x, r_wrist_y), 10, (255, 0, 0), -1)
+
+                # Left wrist: open/previous slide.
+                if l_wrist_x_old - l_wrist_x > 150:
+                    if not presentation_opened:
+                        action = "OPEN"
+                        wrapper = PowerpointWrapper()
+                        presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+                        presentation.run_slideshow()
+                        presentation_opened = True
+                    else:
+                        action = "PREV"
+                        presentation.previous_slide()
+                l_wrist_x_old = l_wrist_x
+
+                # Right wrist: open/next slide.
+                if r_wrist_x - r_wrist_x_old > 150:
+                    if not presentation_opened:
+                        action = "OPEN"
+                        wrapper = PowerpointWrapper()
+                        presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+                        presentation.run_slideshow()
+                        presentation_opened = True
+                    else:
+                        presentation.next_slide()
+                        action = "NEXT"
+                r_wrist_x_old = r_wrist_x
+
+            # Show if any action has been done.
+            cv2.putText(frame, str(action), (70, 45), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         # Stop measuring frame time and display FPS.
         end_frame_time = current_milli_time()
@@ -582,22 +714,50 @@ if __name__ == "__main__":
         keypress = cv2.waitKey(1) & 0xFF
         if keypress == ord("q"):
             break
-        # if keypress == ord("n"):
-        #     cv2.imwrite("wrist_picture.png", frame)
-        #     cv2.imwrite("hand_region.png", right_hand_region)
 
-        # # Call the autoencoder
-        # interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
-        # decoded = autoencoder.forward(interpolated_frame_tensor)
-        # cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
+        # Call the autoencoder
+        interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
+        decoded = autoencoder.forward(interpolated_frame_tensor)
+        cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
+        reconstruction_error = calculate_pixel_diff(interpolated_frame.flatten(), decoded.data.numpy())
+        non_zero_orig = count_non_zero((interpolated_frame.flatten()))
         # mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
-        #     axis=None)
-        # if mse_error > CONFIG["reconstruction_error_threshold"]:
-        #     print("BIG ERROR", mse_error)
+        #    axis=None)
+        # classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+        # gesture = np.argmax(classes)
+        # if classes[gesture] > 0.7:
+        #    print("GESTURE DONE", gesture, "CLASSES", classes)
+
+        if non_zero_orig > 8 and not detected:
+            if reconstruction_error > CONFIG["reconstruction_error_threshold"] or reconstruction_error < 10:
+                print("BIG ERROR", reconstruction_error)
+            else:
+                print("SMALL ERROR", reconstruction_error)
+                detected = True
+                classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+                gesture = np.argmax(classes)
+                if classes[gesture] > 0.7:
+                    detected = True
+                    if gesture == 0:
+                        presentation.previous_slide()
+                        print("PREVIOUS Slide")
+                    elif gesture == 1:
+                        presentation.close_slideshow()
+                        print("RESET")
+                    elif gesture == 2:
+                        presentation.next_slide()
+                        print("NEXT Slide")
+                    else:
+                        print("START/STOP")
+
         # else:
-        #     print("SMALL ERROR", mse_error)
-        #     gesture = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor))
-        #     print("GESTURE DONE", gesture)
+        #     print("Not enough movement")
+
+        if detected or detected_stop > 0:
+            detected += 1
+            if detected >= 20:
+                detected_stop = 0
+                detected = False
 
 # Clean up.
 camera.release()

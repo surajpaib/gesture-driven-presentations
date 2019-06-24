@@ -17,18 +17,18 @@ class Autoencoder(nn.Module):
         self.path = os.path.dirname(os.path.realpath(__file__)).split("src")[0].replace("\\", "/") + \
                     'autoencoder_' + str(train_data_shape) + '.pth'
         self.encoder = nn.Sequential(
-            nn.Linear(train_data_shape, 128),
-            nn.ReLU(True),
-            nn.Linear(128, 64),
-            nn.ReLU(True),
-            nn.Linear(64, latent_space_dim))
+            nn.Linear(train_data_shape, latent_space_dim))
+            # nn.ReLU(True),
+            # nn.Linear(128, 64),
+            # nn.ReLU(True),
+            # nn.Linear(64, latent_space_dim))
         self.decoder = nn.Sequential(
-            nn.Linear(latent_space_dim, 64),
-            nn.ReLU(True),
-            nn.Linear(64, 128),
-            nn.ReLU(True),
-            nn.Linear(128, train_data_shape),
-            nn.Tanh())
+            nn.Linear(latent_space_dim, train_data_shape))
+            # nn.ReLU(True),
+            # nn.Linear(64, 128),
+            # nn.ReLU(True),
+            # nn.Linear(128, train_data_shape),
+            # nn.Tanh())
 
     def forward(self, x):
         encoded = self.encoder(x)

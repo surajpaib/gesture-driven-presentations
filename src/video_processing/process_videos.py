@@ -1,6 +1,10 @@
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import sys
+sys.path.append("./")
+
+import cv2
 from openpose_utils import *
 from video_processing.process_videos_utils import normalize_point, create_xml_for_keypoint
 from config import CONFIG

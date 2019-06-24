@@ -17,3 +17,5 @@ numpy
 opencv
 imutils
 pyautogui
+matplotlib
+keras
