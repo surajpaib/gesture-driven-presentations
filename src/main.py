@@ -6,7 +6,6 @@ import imutils
 
 from ml.autoencoder import *
 from ml.classifier import Classifier
-from ml.correlation_classifier import CorrelationClassifier
 from openpose_utils import *
 from video_processing.frame_data import FrameData
 from video_processing.keypoints import get_all_keypoints_list
@@ -55,17 +54,31 @@ def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarra
     # TODO
     pass
 
+def count_non_zero(flattened_data):
+    count = 0
+    flattened_data = np.round(flattened_data,1)
+    for i in range(len(flattened_data)):
+        if flattened_data[i] != 0:
+            count += 1
+    return count
+
+
 def calculate_pixel_diff(orig_image, reconstructed_image):
     error = 0
-    for y in range(len(orig_image)):
-        for x in range(len(orig_image[y])):
-            orig_val = orig_image[y][x]
-            reconstructed_val = reconstructed_image[y][x]
-            if orig_val == 0 and not reconstructed_val == 0:
-                error += 1
-            elif not (orig_val != 0 and reconstructed_val != 0):
-                error += 1
+    # print(orig_image.shape())
+    # print(reconstructed_image.shape())
+    reconstructed_image = np.round(reconstructed_image[0, :], 1)
+    for pos in range(len(orig_image)):
+        orig_val = orig_image[pos]
+        reconstructed_val = reconstructed_image[pos]
+        if orig_val == reconstructed_val:
+            continue
+        elif (orig_val == 0) and not (reconstructed_val == 0):
+            error += 1
+        elif not (orig_val != 0 and reconstructed_val != 0):
+            error += 1
     return error
+
 
 # -------------------------------------------------------------------------------
 # Main function
@@ -107,6 +120,8 @@ if __name__ == "__main__":
 
     classifier = Classifier(4)
     classifier.load_state()
+    detected = False
+    detected_stop = 0
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -221,20 +236,45 @@ if __name__ == "__main__":
         interpolated_frame_tensor = torch.from_numpy(interpolated_frame.reshape(1, -1))
         decoded = autoencoder.forward(interpolated_frame_tensor)
         cv2.imshow("Decoded frame", cv2.resize(decoded.data.numpy().reshape(interpolated_frame.shape), (320, 320)))
-        reconstruction_error = calculate_pixel_diff(interpolated_frame, decoded)
-        #mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
+        reconstruction_error = calculate_pixel_diff(interpolated_frame.flatten(), decoded.data.numpy())
+        non_zero_orig = count_non_zero((interpolated_frame.flatten()))
+        # mse_error = (np.square(decoded.data.numpy().reshape(interpolated_frame.shape) - interpolated_frame)).mean(
         #    axis=None)
-        #classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
-        #gesture = np.argmax(classes)
-        #if classes[gesture] > 0.7:
+        # classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+        # gesture = np.argmax(classes)
+        # if classes[gesture] > 0.7:
         #    print("GESTURE DONE", gesture, "CLASSES", classes)
 
-    # if mse_error > CONFIG["reconstruction_error_threshold"]:
-        #     print("BIG ERROR", mse_error)
+        if non_zero_orig > 8 and not detected:
+            if reconstruction_error > CONFIG["reconstruction_error_threshold"] or reconstruction_error < 10:
+                print("BIG ERROR", reconstruction_error)
+            else:
+                print("SMALL ERROR", reconstruction_error)
+                detected = True
+                classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
+                gesture = np.argmax(classes)
+                if classes[gesture] > 0.7:
+                    detected = True
+                    if gesture == 0:
+                        presentation.previous_slide()
+                        print("PREVIOUS Slide")
+                    elif gesture == 1:
+                        presentation.close_slideshow()
+                        print("RESET")
+                    elif gesture == 2:
+                        presentation.next_slide()
+                        print("NEXT Slide")
+                    else:
+                        print("START/STOP")
+
         # else:
-        #     print("SMALL ERROR", mse_error)
-        #     gesture = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor))
-        #     print("GESTURE DONE", gesture)
+        #     print("Not enough movement")
+
+        if detected or detected_stop > 0:
+            detected += 1
+            if detected >= 20:
+                detected_stop = 0
+                detected = False
 
 # Clean up.
 camera.release()

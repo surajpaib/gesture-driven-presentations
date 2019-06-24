@@ -21,7 +21,7 @@ CONFIG = {
     "use_dilation": False,
     "kernel_size": 2,
 
-    "reconstruction_error_threshold": 0.01,
+    "reconstruction_error_threshold": 40,
 
     "xml_files_path": "xml_files",
 
