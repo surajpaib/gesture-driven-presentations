@@ -8,7 +8,6 @@ import win32com.client
 class PresentationWrapper:
     def __init__(self, presentation):
         self.presentation = presentation
-        self.spotlight = False
         self.zoom = False
         self.keyboard = Controller()
 
@@ -24,70 +23,29 @@ class PresentationWrapper:
     def previous_slide(self):
         self.presentation.SlideShowWindow.View.Previous()
 
-    def start_spotlight(self):
-        """
-        Hacky right now. It presses F10 which starts the spotlight function
-        from PointerFocus.
-        """
-        # Stop zoom if it is started.
-        if self.zoom:
-            pyautogui.press('f12')
-            self.zoom = False
-
-        # Do nothing if spotlight already started.
-        if self.spotlight:
-            return
-
-        self.spotlight = True
-        # pyautogui.press('f10')
-        keyboard.press(Key.f10)
-
-    def stop_spotlight(self):
-        """
-        Hacky right now. It presses F10 which stops the spotlight function
-        from PointerFocus.
-        """
-        # Do nothing if spotlight is not running.
-        if not self.spotlight:
-            return
-
-        self.spotlight = False
-        # pyautogui.press('f10')
-        self.keyboard.press(Key.f10)
-
     def start_zoom(self):
-        """
-        Hacky right now. It presses F12 which starts the zoom function
-        from PointerFocus.
-        """
-        # Stop spotlight if it is started.
-        if self.spotlight:
-            pyautogui.press('f10')
-            self.spotlight = False
-
         # Do nothing if zoom is already running.
         if self.zoom:
             return
 
+        # NOT WORKING? Problem with the WIN + '+' command?
         self.zoom = True
-        # pyautogui.press('f12')
-        # self.keyboard.press(Key.f12)
-        # self.keyboard.release(Key.f12)
+        self.keyboard.press(Key.cmd)
+        self.keyboard.press('+')
+        self.keyboard.release('+')
+        self.keyboard.release(Key.cmd)
 
     def stop_zoom(self):
-        """
-        Hacky right now. It presses F12 which stops the zoom function
-        from PointerFocus.
-        """
         # Do nothing if zoom is not running.
         if not self.zoom:
             return
 
+        # NOT WORKING? Problem with the WIN + '+' command?
         self.zoom = False
-        # pyautogui.press('f12')
-        # self.keyboard.press(Key.f12)
-        # self.keyboard.release(Key.f12)
-
+        self.keyboard.press(Key.cmd)
+        self.keyboard.press('+')
+        self.keyboard.release('+')
+        self.keyboard.release(Key.cmd)
 
 class PowerpointWrapper:
     def __init__(self):

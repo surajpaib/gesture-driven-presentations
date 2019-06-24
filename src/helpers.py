@@ -16,7 +16,31 @@ from keras.preprocessing.image import load_img
 from keras.preprocessing.image import img_to_array
 from keras.preprocessing.image import ImageDataGenerator
 
+CLASS_DICT = {
+    # arm gestures
+    "None": -1,
+    "LPrev": 0,
+    "Reset": 1,
+    "RNext": 2,
+    "StartStop": 3,
 
+    # hand gestures
+    "ZoomIn": 4,
+    "ZoomOut": 5
+}
+
+CLASS_DICT_INVERSE = {
+    # arm gestures
+    -1: "None",
+    0: "LPrev",
+    1: "Reset",
+    2: "RNext",
+    3: "StartStop",
+
+    # hand gestures
+    4: "ZoomIn",
+    5: "ZoomOut"
+}
 
 def get_latent_space_loaders(img_size=32, batch_size=32):
     """
@@ -390,18 +414,20 @@ def data_augmentation(data, labels, batch_size):
     # y = np.array(y)
     return X, y
 
+def main():
+    # train_data, train_labels = load_video_data_labels(8,2)
+    # p = np.random.permutation(len(train_data))
+    # train_data, train_labels = train_data[p], train_labels[p]
+    # import matplotlib.pyplot as plt
+    #
+    # for i in p[:100]:
+    #     plt.imshow(train_data[i], cmap='gray')
+    #     plt.title("Label = " + str(train_labels[i]))
+    #     plt.show()
 
-#
-# train_data, train_labels = load_video_data_labels(8,2)
-# p = np.random.permutation(len(train_data))
-# train_data, train_labels = train_data[p], train_labels[p]
-# import matplotlib.pyplot as plt
-#
-# for i in p[:100]:
-#     plt.imshow(train_data[i], cmap='gray')
-#     plt.title("Label = " + str(train_labels[i]))
-#     plt.show()
+    # test_autoencoder_space()
+    train_autoencoder()
+    train_classifier()
 
-# test_autoencoder_space()
-train_autoencoder()
-train_classifier()
+if __name__== "__main__":
+    main()

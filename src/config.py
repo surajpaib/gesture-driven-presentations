@@ -14,11 +14,18 @@ CONFIG = {
     "confidence_threshold": 0.3,
     "matrix_vertical_crop": 10,
 
-    "presentation_path": "../MRP-6.pptx",
+    "presentation_path": "..\\MRP-6.pptx",
 
     "correlation_classifier_dataset": "..\\dataset",
 
-    "arm_gesture_classifier": "autoencoder", # ["cross-correlation", "autoencoder", "heuristics"]
+    # hand gesture classification things
+    "hand_gestures_enabled": False,
+    "hand_gesture_classifier_path": "..\\models\\hand_classifier_v1.joblib",
+    "hand_motion_smoothing_frames": 3,
+    "hand_gesture_time_window_s": 0.5,
+    "hand_gesture_window_history_size": 25,
+
+    "arm_gesture_classifier": "heuristics", # ["cross-correlation", "autoencoder", "heuristics"]
     "hand_gesture_classifier": "svm", # ["svm", "gradients"]
 
     "use_dilation": False,

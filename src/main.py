@@ -1,6 +1,5 @@
 import time
 import random
-from typing import List, Tuple
 from copy import deepcopy
 
 import cv2
@@ -10,7 +9,6 @@ import numpy as np
 from sklearn import datasets, svm, metrics
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import pairwise
-from joblib import dump, load
 
 from skimage import io
 import skimage.data as data
@@ -31,208 +29,12 @@ from openpose_utils import *
 from video_processing.frame_data import FrameData
 from video_processing.keypoints import get_all_keypoints_list, KEYPOINTS_DICT
 from video_processing.video_data import VideoData
+from hand_gesture_helpers import *
+from stopwatch import Stopwatch
+from helpers import CLASS_DICT, CLASS_DICT_INVERSE
 
 current_milli_time = lambda: int(round(time.time() * 1000))
 timer_seconds = current_milli_time() / 1000
-
-def blur_image(image):
-    return cv2.blur(image, (3,3))
-
-def sharpen_image(image):
-    kernel_sharpening = np.array([[-1,-1,-1], 
-                              [-1, 9,-1],
-                              [-1,-1,-1]])
-    return cv2.filter2D(image, -1, kernel_sharpening)
-
-def image_gradients(image):
-    img_grayscale = cv2.cvtColor(cv2.blur(image, (3,3)), cv2.COLOR_BGR2GRAY)
-    gradients_x = cv2.Sobel(img_grayscale, cv2.CV_64F, 1, 0, ksize=5)
-    gradients_y = cv2.Sobel(img_grayscale, cv2.CV_64F, 0, 1, ksize=5)
-    return gradients_x, gradients_y
-
-
-def extract_hand_regions(frame: np.ndarray, hand_rectangles: List[op.Rectangle]) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Crops out the two hand regions from the image, based on the given rectangles.
-    """
-
-    # Extract left hand rectangle if it was detected.
-    if hand_rectangles[0] is not None:
-        rect_x_1 = int(hand_rectangles[0].x)
-        rect_y_1 = int(hand_rectangles[0].y)
-        rect_x_2 = int(hand_rectangles[0].x + hand_rectangles[0].width)
-        rect_y_2 = int(hand_rectangles[0].y + hand_rectangles[0].height)
-        left_hand_region = frame.copy()[rect_y_1:rect_y_2, rect_x_1:rect_x_2]
-    else:
-        left_hand_region = None
-
-    # Extract right hand rectangle if it was detected.
-    if hand_rectangles[1] is not None:
-        rect_x_1 = int(hand_rectangles[1].x)
-        rect_y_1 = int(hand_rectangles[1].y)
-        rect_x_2 = int(hand_rectangles[1].x + hand_rectangles[1].width)
-        rect_y_2 = int(hand_rectangles[1].y + hand_rectangles[1].height)
-        right_hand_region = frame.copy()[rect_y_1:rect_y_2, rect_x_1:rect_x_2]
-    else:
-        right_hand_region = None
-
-    # Display the two rectangles.
-    if left_hand_region is not None and left_hand_region.shape[0] > 0 and left_hand_region.shape[1] > 0:
-        pass
-        # cv2.imshow("Left hand region", left_hand_region)
-    if right_hand_region is not None and right_hand_region.shape[0] > 0 and right_hand_region.shape[1] > 0:
-        cv2.imshow("Right hand region", right_hand_region)
-
-    # Return the two regions.
-    return left_hand_region, right_hand_region
-
-def basic_preprocessing_steps(img):
-    new_img = cv2.blur(img, (5,5))
-    return new_img
-
-def condition_1(rgb_img, hsv_img, ycrcb_img):
-    rgb = rgb_img
-    hsv = hsv_img
-    ycrcb = ycrcb_img
-    return (hsv[:,:,0] >= 0) & (hsv[:,:,0] <= 25) & (hsv[:,:,1] >= 0.23 * 255) \
-        & (hsv[:,:,1] <= 0.68 * 255) & (rgb[:,:,0] > 95) & (rgb[:,:,1] > 40) \
-        & (rgb[:,:,2] > 20) & (rgb[:,:,0] > rgb[:,:,1]) & (rgb[:,:,0] > rgb[:,:,2]) \
-        & (np.abs(rgb[:,:,0] - rgb[:,:,1]) > 15)
-
-def condition_2(rgb_img, hsv_img, ycrcb_img):
-    rgb = rgb_img
-    hsv = hsv_img
-    ycrcb = ycrcb_img
-    return (rgb[:,:,0] > 95) & (rgb[:,:,1] > 40) & (rgb[:,:,2] > 20) \
-        & (rgb[:,:,0] > rgb[:,:,1]) & (rgb[:,:,0] > rgb[:,:,2]) & (np.abs(rgb[:,:,0] - rgb[:,:,1]) > 15) \
-        & (ycrcb[:,:,2] > 85) & (ycrcb[:,:,0] > 80) & (ycrcb[:,:,1] <= 1.5862*ycrcb[:,:,2]+20) \
-        & (ycrcb[:,:,1] >= 0.3448*ycrcb[:,:,2]+76.2069) & (ycrcb[:,:,1] >= -4.5652*ycrcb[:,:,2]+234.5652) \
-        & (ycrcb[:,:,1] <= -1.15*ycrcb[:,:,2]+301.75) & (ycrcb[:,:,1] <= -2.2857*ycrcb[:,:,2]+432.85)
-
-def skin_segmentation_thresholds(img):
-    """
-    Based on https://arxiv.org/ftp/arxiv/papers/1708/1708.02694.pdf .
-    Perform thresholding in RGB, HSV and YCrCb at the same time.
-    
-    NOTE: OpenCV color ranges are: H from 0-179, S and V from 0-255
-    """
-    
-    img = basic_preprocessing_steps(img)
-    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
-    
-    mask = condition_1(rgb_img, hsv_img, ycrcb_img) | condition_2(rgb_img, hsv_img, ycrcb_img)
-            
-    return mask
-
-def hand_segmentation(hand_image):
-    # Perform thresholding segmentation and resize to a fixed size.
-    mask = skin_segmentation_thresholds(hand_image).astype(np.uint8)
-    mask = cv2.resize(mask, (150, 150), interpolation=cv2.INTER_NEAREST)
-    
-    # Apply some morphological operations.
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
-    mask = cv2.dilate(mask, kernel, iterations = 1)
-    
-    # Extract contours and only keep the biggest contour.
-    final_mask = np.zeros(mask.shape, np.uint8)
-    _, contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if len(contours) != 0:
-        max_contour = max(contours, key = cv2.contourArea)
-        cv2.drawContours(final_mask, [max_contour], -1, (255,0,0), thickness=cv2.FILLED)
-    
-    return final_mask
-
-def init_svm_classifier(classifier_path):
-    """
-    Loads a pretrained SVM hand gesture classifier
-    """
-
-    classifier = load(classifier_path) 
-    return classifier
-
-def detect_hand_gesture(classifier, hand_region):
-    """
-    Performs gesture detection on the right hand region and returns if
-    the confidence is above a certain threshold.
-    """
-
-    CONFIDENCE_THRESHOLD = 0
-
-    # Reshape and normalize values (classifier is trained with 0 and 1 values, but the obtained image
-    # uses [0,255] range).
-    classifier_input = (hand_region.reshape((1, -1)) / 255).astype(np.uint8)
-    prediction = classifier.predict(classifier_input)
-    if prediction == 0:
-        return "PALM"
-    else:
-        return "FIST"
-
-def detect_hand_gesture_gradients(hand_region):
-    # Simple rule: if horizontal gradients are greater than vertical gradients, it could be a palm.
-    gradients_x, gradients_y = image_gradients(hand_region)
-    if np.sum(np.abs(gradients_x)) > np.sum(np.abs(gradients_y)):
-        return "PALM"
-    else:
-        return "FIST"
-
-def segment_hand_external_library(hand_region):
-    import skin_detector
-
-    img_msk = skin_detector.process(hand_region)
-
-    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    cv2.filter2D(img_msk, -1, disc, img_msk)
-
-    final_mask = np.zeros(img_msk.shape, np.uint8)
-    _, contours, _ = cv2.findContours(img_msk, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if len(contours) != 0:
-        max_contour = max(contours, key = cv2.contourArea)
-        cv2.drawContours(final_mask, [max_contour], -1, (255,0,0), thickness=cv2.FILLED)
-
-    hand_region_segmented = cv2.bitwise_and(hand_region, hand_region, mask=final_mask)
-
-    return final_mask, hand_region_segmented
-
-def segment_hand_histograms(hand_region):
-    # Convert hand region to HSV.
-    hand_region_resized = cv2.resize(hand_region, (150, 150), interpolation=cv2.INTER_NEAREST)
-    hand_region_hsv = cv2.cvtColor(hand_region_resized, cv2.COLOR_BGR2HSV)
-
-    # Take a small patch in the center of the hand region.
-    patch_size = 25
-    center_x = hand_region.shape[0] // 2
-    center_y = hand_region.shape[1] // 2
-    patch = hand_region_hsv[center_x-patch_size//2:center_x+patch_size//2, center_y-patch_size//2:center_y+patch_size//2]
-
-    # Convert patch to HSV, compute histogram, normalize
-    patch_hist = cv2.calcHist([patch], [0, 1], None, [75, 75], [0, 180, 0, 256])
-    cv2.normalize(patch_hist, patch_hist, 0, 255, cv2.NORM_MINMAX)
-
-    # Backproject histogram, binarize and mask the hand region.
-    mask = cv2.calcBackProject([hand_region_hsv], [0, 1], patch_hist, [0, 180, 0, 256], 1)
-    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    cv2.filter2D(mask, -1, disc, mask)
-
-    final_mask = np.zeros(mask.shape, np.uint8)
-    _, contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    if len(contours) != 0:
-        max_contour = max(contours, key = cv2.contourArea)
-        cv2.drawContours(final_mask, [max_contour], -1, (255,0,0), thickness=cv2.FILLED)
-
-    masked_hand_region = cv2.bitwise_and(hand_region_resized, hand_region_resized, mask = final_mask)
-
-    return final_mask, masked_hand_region
-
-# (From our process_videos.py)
-def normalize_point(point_to_normalize, avg_dist, avg_point):
-    nx = point_to_normalize[0] - avg_point[0]
-    nx = nx / avg_dist
-    ny = point_to_normalize[1] - avg_point[1]
-    ny = ny / avg_dist
-
-    return [nx,ny]
 
 def count_non_zero(flattened_data):
     count = 0
@@ -255,17 +57,6 @@ def calculate_pixel_diff(orig_image, reconstructed_image):
         elif not (orig_val != 0 and reconstructed_val != 0):
             error += 1
     return error
-
-
-def save_matrix(event,x,y,flags,param):
-    """
-    Helper function used for data collection.
-    """
-
-    if event == cv2.EVENT_LBUTTONDOWN:
-        video_data = deepcopy(param)
-        video_data._frames = video_data._frames[-CONFIG["interpolation_frames"]:]
-        video_data.save_to_xml("../crosscorr/%s.xml" % time.time())
 
 def get_cross_correlation_prediction(correlation_classifier, interpolated_frame):
     lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude = correlation_classifier.classify(interpolated_frame)
@@ -293,36 +84,216 @@ def get_autoencoder_prediction(autoencoder, interpolated_frame):
     reconstruction_error = calculate_pixel_diff(interpolated_frame.flatten(), decoded.data.numpy())
     non_zero_orig = count_non_zero((interpolated_frame.flatten()))
 
+    prediction = CLASS_DICT["None"]
     if non_zero_orig > 8:
         if reconstruction_error > CONFIG["reconstruction_error_threshold"] or reconstruction_error < 10:
             print("BIG ERROR", reconstruction_error)
-            return None
         else:
             print("SMALL ERROR", reconstruction_error)
             classes = classifier.forward(autoencoder.get_latent_space(interpolated_frame_tensor)).data.numpy()[0]
             gesture = np.argmax(classes)
             if classes[gesture] > 0.7:
-                return gesture
+                prediction = gesture
+
+    return prediction
+
+# Store last "CONSIDERED_FRAMES" frames and boolean values for opening/closing the presentation.
+# A bit dirty but easiest to do as global.
+wrists_at_shoulders_booleans = []
+keypoint_frame_lists = []
+CONSIDERED_FRAMES = 10
+START_STOP_REQUIRED_FRAMES = 5
+ACCEPTABLE_DISTANCE_WRIST_SHIFT = 1.4 
+ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT = 0.7
+ACCEPTABLE_DISTANCE_WRIST_SHOULDER = 0.3
+def get_heuristic_prediction(keypoints):
+    # Extract the relevant keypoints.
+    r_wrist = keypoints[KEYPOINTS_DICT["RWrist"]]
+    l_wrist = keypoints[KEYPOINTS_DICT["LWrist"]]
+    r_shoulder = keypoints[KEYPOINTS_DICT["RShoulder"]]
+    l_shoulder = keypoints[KEYPOINTS_DICT["LShoulder"]]
+
+    # Only track if all 4 keypoints are seen with a confidence of > 0.3.
+    if (r_wrist[2] > 0.3) and (l_wrist[2] > 0.3) and (r_shoulder[2] > 0.3) and (l_shoulder[2] > 0.3):
+        # Compute average point and average distance.
+        avg_dist = np.sqrt((r_shoulder[0] - l_shoulder[0]) ** 2 + (r_shoulder[1] - l_shoulder[1]) ** 2)
+        avg_point = [(r_shoulder[0] + l_shoulder[0]) / 2, (r_shoulder[1] + l_shoulder[1]) / 2]
+        avg_point[0] = int(avg_point[0])
+        avg_point[1] = int(avg_point[1])
+    else:
+        return CLASS_DICT["None"]
+
+    # Normalize keypoints.
+    r_wrist = normalize_point(r_wrist, avg_dist, avg_point)
+    l_wrist = normalize_point(l_wrist, avg_dist, avg_point)
+    r_shoulder = normalize_point(r_shoulder, avg_dist, avg_point)
+    l_shoulder = normalize_point(l_shoulder, avg_dist, avg_point)
+
+    # Build and maintain a list containing "CONSIDERED_FRAMES" (uniformly structured) dictionaries of normalized keypoints.
+    selected_keypoints_dict = {"RWrist": r_wrist, "LWrist": l_wrist, "RShoulder": r_shoulder, "LShoulder": l_shoulder}
+    keypoint_frame_lists.append(selected_keypoints_dict)
+    if len(keypoint_frame_lists) > CONSIDERED_FRAMES:
+        keypoint_frame_lists.pop(0)
+
+    # Get current frame keypoint data.
+    r_wrist_x = r_wrist[0]
+    r_wrist_y = r_wrist[1]
+    l_wrist_x = l_wrist[0]
+    l_wrist_y = l_wrist[1]
+    r_shoulder_x = r_shoulder[0]
+    r_shoulder_y = r_shoulder[1]
+    l_shoulder_x = l_shoulder[0]
+    l_shoulder_y = l_shoulder[1]
+
+    if len(keypoint_frame_lists) > 1:
+        ### RNEXT, LPREV GESTURES ###
+        # Get previous frame wrist x data.
+        r_wrist_x_old = keypoint_frame_lists[-2]["RWrist"][0]
+        l_wrist_x_old = keypoint_frame_lists[-2]["LWrist"][0]
+
+        # No absolute value applied, since then also backward movements will be caught
+        # (e.g. right arm going back from the left to the right).
+        if r_wrist_x - r_wrist_x_old > ACCEPTABLE_DISTANCE_WRIST_SHIFT:
+            return CLASS_DICT["RNext"]
+        if l_wrist_x_old - l_wrist_x > ACCEPTABLE_DISTANCE_WRIST_SHIFT:
+            return CLASS_DICT["LPrev"]
+        ### END RNEXT, LPREV GESTURES ###
+
+        ### RESET GESTURE ###
+        # [Measured experimentally] At least 6 frames are required for for the reset gesture with current distance values.
+        if len(keypoint_frame_lists) > 5:
+            r_wrist_x_fifth_old = keypoint_frame_lists[-5]["RWrist"][0]
+            l_wrist_x_fifth_old = keypoint_frame_lists[-5]["LWrist"][0]
+
+            r_wrist_x_sixth_old = keypoint_frame_lists[-6]["RWrist"][0]
+            l_wrist_x_sixth_old = keypoint_frame_lists[-6]["LWrist"][0]
+
+            # Condition 1 and 2, first movements of the right and left arm respectively. They need to be between 
+            # 2 relevant thresholds so as not to overlap with RNEXT and LPREV gestures.
+            cond1 = ACCEPTABLE_DISTANCE_WRIST_SHIFT > r_wrist_x_fifth_old - r_wrist_x_sixth_old > ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT 
+            cond2 = ACCEPTABLE_DISTANCE_WRIST_SHIFT > r_wrist_x - r_wrist_x_old > ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT
+
+            # Condition 3 and 4, third movements of the right and left arm. Analogous constraints as for condition 1 and 2.
+            cond3 = ACCEPTABLE_DISTANCE_WRIST_SHIFT > l_wrist_x_sixth_old - l_wrist_x_fifth_old > ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT
+            cond4 = ACCEPTABLE_DISTANCE_WRIST_SHIFT > l_wrist_x_old - l_wrist_x > ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT
+
+            if cond1 and cond2 and cond3 and cond4:
+                return CLASS_DICT["Reset"]
+        ### END RESET GESTURE ###
+
+        ### START-STOP GESTURE ###
+        # For appropriate working of the program, no other PPT presentation should be open beforehand.
+        right_wrist_at_right_shoulder = (np.absolute(np.absolute(r_wrist_x) - np.absolute(r_shoulder_x)) < ACCEPTABLE_DISTANCE_WRIST_SHOULDER) \
+            and (np.absolute(np.absolute(r_wrist_y) - np.absolute(r_shoulder_y)) < ACCEPTABLE_DISTANCE_WRIST_SHOULDER)
+        left_wrist_at_left_shoulder = (np.absolute(np.absolute(l_wrist_x) - np.absolute(l_shoulder_x)) < ACCEPTABLE_DISTANCE_WRIST_SHOULDER) \
+            and (np.absolute(np.absolute(l_wrist_y) - np.absolute(l_shoulder_y)) < ACCEPTABLE_DISTANCE_WRIST_SHOULDER)
+
+        if right_wrist_at_right_shoulder and left_wrist_at_left_shoulder:
+            wrists_at_shoulders_booleans.append(True)
+            print("Accumulating for START/STOP")
+        else:
+            wrists_at_shoulders_booleans.append(False)
+
+        if len(wrists_at_shoulders_booleans) > CONSIDERED_FRAMES:
+            wrists_at_shoulders_booleans.pop(0)
+
+        if sum(wrists_at_shoulders_booleans[-START_STOP_REQUIRED_FRAMES:]) == START_STOP_REQUIRED_FRAMES:
+            wrists_at_shoulders_booleans = []
+            return CLASS_DICT["StartStop"]
+        ### END START STOP GESTURE ###
+
+    return CLASS_DICT["None"]
+
+def segment_hand_region(right_hand_region):
+    # Resize to a standard size.
+    right_hand_region_resized = cv2.resize(right_hand_region, (150, 150), interpolation=cv2.INTER_NEAREST)
+    
+    # "Average" the result of the three segmentation methods.
+    mask1, _ = segment_hand_external_library(right_hand_region_resized)
+    mask2 = hand_segmentation(right_hand_region_resized)
+    mask3, _ = segment_hand_histograms(right_hand_region_resized)
+    final_mask = mask1 & mask2 & mask3
+    cv2.imshow("Mask", final_mask)
+
+    right_hand_segmented = cv2.bitwise_and(right_hand_region_resized, right_hand_region_resized, mask = final_mask)
+    return final_mask, right_hand_segmented
+
+def get_svm_prediction(hand_gesture_classifier, right_hand_region):
+    final_mask, right_hand_segmented = segment_hand_region(right_hand_region)
+    hand_gesture = detect_hand_gesture(hand_gesture_classifier, final_mask)
+    
+    if hand_gesture == CLASS_DICT["ZoomIn"] and np.sum(final_mask) / np.size(final_mask) > 30:
+        return CLASS_DICT["ZoomIn"]
+    else:
+        return CLASS_DICT["ZoomOut"]
+
+def get_gradients_prediction(right_hand_region):
+    final_mask, right_hand_segmented = segment_hand_region(right_hand_region)
+    hand_gesture = detect_hand_gesture_gradients(right_hand_segmented)
+
+    if hand_gesture == CLASS_DICT["ZoomIn"] and np.sum(final_mask) / np.size(final_mask) > 30:
+        return CLASS_DICT["ZoomIn"]
+    else:
+        return CLASS_DICT["ZoomOut"]
+
+def get_mouse_position(keypoints, mouse_x_positions, mouse_y_positions):
+    # Compute average point and average distance for normalization.
+    avg_x = keypoints[KEYPOINTS_DICT["RShoulder"]][0]
+    avg_y = keypoints[KEYPOINTS_DICT["RShoulder"]][1]
+    avg_dist = 1.5 * np.sqrt((keypoints[4][0]-keypoints[5][0])**2 + (keypoints[4][1]-keypoints[5][1])**2)
+
+    # Normalize the wrist position.
+    normalized_point = normalize_point([keypoints[KEYPOINTS_DICT["RWrist"]][0], keypoints[KEYPOINTS_DICT["RWrist"]][1]], avg_dist, [avg_x, avg_y])
+
+    # Clamp to range [-1,1] then normalize to range [0,1].
+    if normalized_point[0] < -1:
+        normalized_point[0] = -1
+    elif normalized_point[0] > 1:
+        normalized_point[0] = 1
+    if normalized_point[1] < -1:
+        normalized_point[1] = -1
+    elif normalized_point[1] > 1:
+        normalized_point[1] = 1
+    normalized_point[0] = (normalized_point[0] - (-1)) / 2
+    normalized_point[1] = (normalized_point[1] - (-1)) / 2
+
+    # Flip X-axis.
+    normalized_point[0] = 1 - normalized_point[0]
+
+    # Now normalize to the range of the screen.
+    x_normalized = normalized_point[0] * 1920
+    y_normalized = normalized_point[1] * 1080
+
+    # Filter to smooth the movement a little bit.
+    N = CONFIG["hand_motion_smoothing_frames"]
+    if N > 0:
+        smoothing_filter = np.ones(N) / N
+        mouse_x_positions.append(x_normalized)
+        mouse_y_positions.append(y_normalized)
+        filtered_x = np.convolve(mouse_x_positions[-5:], smoothing_filter, mode='same')[-1]
+        filtered_y = np.convolve(mouse_y_positions[-5:], smoothing_filter, mode='same')[-1]
+    else:
+        filtered_x = mouse_x_position[-1]
+        filtered_y = mouse_y_position[-1]
+
+    return filtered_x, filtered_y
+
+def get_majority_hand_gesture(hand_gesture_history):
+    samples = len(hand_gesture_history)
+    
+    if hand_gesture_history.count("PALM") > 3/4*samples:
+        return CLASS_DICT["ZoomIn"]
+    elif hand_gesture_history.count("FIST") > 3/4*samples:
+        return CLASS_DICT["ZoomOut"]
+
+def display_keypoint(frame, keypoints, keypoint_name):
+    k = keypoints[KEYPOINTS_DICT[keypoint_name]]
+    cv2.circle(frame, (int(k[0]), int(k[1])), 10, (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)), -1)
+
 
 # -------------------------------------------------------------------------------
 # Main function
 #-------------------------------------------------------------------------------
-
-CLASS_DICT = {
-    "None": -1,
-    "LPrev": 0,
-    "Reset": 1,
-    "RNext": 2,
-    "StartStop": 3
-}
-
-CLASS_DICT_INVERSE = {
-    -1: "None",
-    0: "LPrev",
-    1: "Reset",
-    2: "RNext",
-    3: "StartStop"
-}
 
 if __name__ == "__main__":
     # Initialize OpenPose.
@@ -334,7 +305,9 @@ if __name__ == "__main__":
     num_frames = 0
 
     presentation_opened = False
+    predicting = False
     wrapper = None
+    pause_stopwatch = Stopwatch()
 
     # Load some relevant configuration values.
     interp_frames = CONFIG["interpolation_frames"]
@@ -344,17 +317,12 @@ if __name__ == "__main__":
     matrix_vertical_crop = CONFIG["matrix_vertical_crop"]
     
     ### Initialisation of arm gesture classifier.
+    video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold,
+                        matrix_size=img_size)
     if CONFIG["arm_gesture_classifier"] == "cross-correlation":
-        video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold,
-                           matrix_size=img_size)
-
-        # Load correlation classifier model.
         correlation_classifier = CorrelationClassifier()
 
     elif CONFIG["arm_gesture_classifier"] == "autoencoder":
-        video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold,
-                           matrix_size=img_size)
-
         # Load autoencoder.
         autoencoder = Autoencoder(train_data_shape=(img_size * (img_size - matrix_vertical_crop)))
         autoencoder.load_state()
@@ -366,7 +334,11 @@ if __name__ == "__main__":
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     elif CONFIG["arm_gesture_classifier"] == "heuristics":
-        pass
+        CONSIDERED_FRAMES = 10
+        START_STOP_REQUIRED_FRAMES = 5
+        ACCEPTABLE_DISTANCE_WRIST_SHIFT = 1.4 
+        ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT = 0.7
+        ACCEPTABLE_DISTANCE_WRIST_SHOULDER = 0.3
 
     else:
         print("Invalid config value for arm_gesture_classifier!")
@@ -374,28 +346,28 @@ if __name__ == "__main__":
     ### END of arm gesture classifier initialisation.
 
     ### Initialisation of hand gesture classifier.
-    keyboard = pynput.keyboard.Controller()
-    mouse = pynput.mouse.Controller()
-    hand_gesture_history = []
-    if CONFIG["hand_gesture_classifier"] == "svm":
-        hand_gesture_classifier = init_svm_classifier("models/hand_classifier_v1.joblib")
+    if CONFIG["hand_gestures_enabled"] is True:
+        keyboard = pynput.keyboard.Controller()
+        mouse = pynput.mouse.Controller()
+        hand_gesture_history = []
+        mouse_x_positions = []
+        mouse_y_positions = []
+        hand_gesture_stopwatch = Stopwatch()
 
-    elif CONFIG["hand_gesture_classifier"] == "gradients":
-        pass
+        if CONFIG["hand_gesture_classifier"] == "svm":
+            hand_gesture_classifier = init_svm_classifier(CONFIG["hand_gesture_classifier_path"])
 
-    else:
-        print("Invalid config value for hand_gesture_classifier!")
-        exit(-1)
+        elif CONFIG["hand_gesture_classifier"] == "gradients":
+            # Nothing to initialise.
+            pass
+
+        else:
+            print("Invalid config value for hand_gesture_classifier!")
+            exit(-1)
     ### END of hand gesture classifier initialisation.
 
     # Keep looping, until interrupted by a Q keypress.
-    time_window = 500 # ms
-    gesture_history_size = 25
-    time_window_beginning = current_milli_time()
-    zoom_running = False
-    frame_counter = 0
     while True:
-        frame_counter += 1
 
         # Measure frame time.
         start_frame_time = current_milli_time()
@@ -412,116 +384,6 @@ if __name__ == "__main__":
         keypoints = get_keypoints_from_datum(datum, get_all_keypoints_list())
         hand_rectangles = get_hand_rectangles_from_datum(datum)
 
-        # # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).
-        # if hand_rectangles:
-        #     global left_hand_region, right_hand_region
-        #     left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
-        #     if right_hand_region is not None and right_hand_region.size != 0:
-
-        #         # Perhaps use this wrist shoulder distance?
-        #         wrist_x = keypoints[KEYPOINTS_DICT["RWrist"]][0]
-        #         wrist_y = keypoints[KEYPOINTS_DICT["RWrist"]][1]
-        #         shoulder_x = keypoints[KEYPOINTS_DICT["RShoulder"]][0]
-        #         shoulder_y = keypoints[KEYPOINTS_DICT["RShoulder"]][1]
-        #         cv2.circle(frame, (wrist_x, wrist_y), 10, (0, 0, 255), -1)
-        #         cv2.circle(frame, (shoulder_x, shoulder_y), 10, (0, 0, 255), -1)
-        #         wrist_shoulder_distance = np.sqrt(np.square(wrist_x - shoulder_x) + np.square(wrist_y - shoulder_y))
-
-        #         if wrist_shoulder_distance < 50:
-        #             # WITH SEGMENTATION
-        #             right_hand_region_resized = cv2.resize(right_hand_region, (150, 150), interpolation=cv2.INTER_NEAREST)
-        #             mask1, _ = segment_hand_external_library(right_hand_region_resized)
-        #             mask2 = hand_segmentation(right_hand_region_resized)
-        #             mask3, _ = segment_hand_histograms(right_hand_region_resized)
-        #             final_mask = mask1 & mask2 & mask3
-        #             cv2.imshow("Mask", mask1 & mask2 & mask3)
-
-        #             right_hand_segmented = cv2.bitwise_and(right_hand_region_resized, right_hand_region_resized, mask = final_mask)
-        #             hand_gesture = detect_hand_gesture(hand_gesture_classifier, final_mask)
-        #             hand_gesture = detect_hand_gesture_gradients(right_hand_segmented)
-
-        #             # NO SEGMENTATION:
-        #             # right_hand_region_resized = cv2.resize(right_hand_region, (100, 100), interpolation=cv2.INTER_NEAREST)
-        #             # right_hand_region_resized = cv2.resize(cv2.cvtColor(right_hand_region, cv2.COLOR_BGR2GRAY), (100, 100), interpolation=cv2.INTER_NEAREST)
-        #             # right_hand_region_resized = cv2.resize(cv2.Canny(cv2.cvtColor(right_hand_region, cv2.COLOR_BGR2GRAY), 100, 200), (100, 100), interpolation=cv2.INTER_NEAREST)
-        #             # hand_gesture = detect_hand_gesture(hand_gesture_classifier, right_hand_region_resized)
-        #             print(hand_gesture)
-                    
-        #             # if hand_gesture == "PALM" and np.sum(final_mask) / np.size(final_mask) > 30:
-        #             #     hand_gesture_history.append(hand_gesture)
-        #             # else:
-        #             #     hand_gesture_history.append("FIST")
-
-        #     if keypoints[KEYPOINTS_DICT["RWrist"]][0] > 0 and keypoints[KEYPOINTS_DICT["RWrist"]][1] > 0:
-                
-        #         # Take the average point for the normalization as the right shoulder.
-        #         avg_x = keypoints[KEYPOINTS_DICT["RShoulder"]][0]
-        #         avg_y = keypoints[KEYPOINTS_DICT["RShoulder"]][1]
-        #         # cv2.circle(frame, (int(avg_x), int(avg_y)), 10, (0,255,0), -1)
-                
-        #         # Compute average distance (1.5 shoulder lengths in this case)
-        #         avg_dist = 1.5 * np.sqrt((keypoints[4][0]-keypoints[5][0])**2 + (keypoints[4][1]-keypoints[5][1])**2)
-
-        #         # Normalize the wrist position according to these values.
-        #         normalized_point = normalize_point([keypoints[0][0], keypoints[0][1]], avg_dist, [avg_x, avg_y])
-        #         # print("Avg point: [%.3f, %.3f]. Avg distance: %.3f. Normalized point: [%.3f, %.3f]" % (avg_x, avg_y, avg_dist, normalized_point[0], normalized_point[1]))
-
-        #         # Clamp to range [-1,1] then normalize to range [0,1]
-        #         if normalized_point[0] < -1:
-        #             normalized_point[0] = -1
-        #         elif normalized_point[0] > 1:
-        #             normalized_point[0] = 1
-        #         if normalized_point[1] < -1:
-        #             normalized_point[1] = -1
-        #         elif normalized_point[1] > 1:
-        #             normalized_point[1] = 1
-        #         normalized_point[0] = (normalized_point[0] - (-1)) / 2
-        #         normalized_point[1] = (normalized_point[1] - (-1)) / 2
-
-        #         # Flip X-axis.
-        #         normalized_point[0] = 1 - normalized_point[0]
-
-        #         # VERSION 2
-        #         # Now normalize to the range of the screen.
-        #         x_normalized = normalized_point[0] * 1920
-        #         y_normalized = normalized_point[1] * 1080
-
-        #         # Filter to smooth the movement a little bit.
-        #         N = 3
-        #         smoothing_filter = np.ones(N) / N
-        #         mouse_x_positions.append(x_normalized)
-        #         mouse_y_positions.append(y_normalized)
-        #         filtered_x = np.convolve(mouse_x_positions[-5:], smoothing_filter, mode='same')
-        #         filtered_y = np.convolve(mouse_y_positions[-5:], smoothing_filter, mode='same')
-
-        #         mouse.position = (filtered_x[-1], filtered_y[-1])
-
-        # # Every time window, look through the history of hand gesture predictions.
-        # # If there is a majority gesture, then perform it.
-        # if current_milli_time() - time_window_beginning > time_window:
-        #     hand_gesture_history = hand_gesture_history[-gesture_history_size:]
-        #     samples = len(hand_gesture_history)
-        #     # print("Palm count: %d. Fist count: %d. None count: %d." % (hand_gesture_history.count("PALM"), hand_gesture_history.count("FIST"), hand_gesture_history.count(None)))
-        #     if hand_gesture_history.count("PALM") > 3/4*samples:
-        #         # print("PALM DETECTED")
-        #         if not zoom_running:
-        #             keyboard.press(pynput.keyboard.Key.f12)
-        #             keyboard.release(pynput.keyboard.Key.f12)
-        #         if presentation_opened:
-        #             presentation.start_zoom()
-        #         zoom_running = True
-
-        #     elif hand_gesture_history.count("FIST") > 3/4*samples:
-        #         # print("FIST DETECTED")
-        #         if zoom_running:
-        #             keyboard.press(pynput.keyboard.Key.f12)
-        #             keyboard.release(pynput.keyboard.Key.f12)
-        #         if presentation_opened:
-        #             presentation.stop_zoom()
-        #         zoom_running = False
-
-        #     time_window_beginning = current_milli_time()
-
         # If any person was detected on the screen, we can perform the classification.
         if keypoints is not None:
             # Build a FrameData object and add it to the VideoData to get the interpolation of the previous frames.
@@ -530,6 +392,12 @@ if __name__ == "__main__":
 
             # Now get the last matrix of VideoData (which should be the last 4 frames, interpolated)
             interpolated_frame = video_data.get_newest_matrix()
+
+            # Display the wrist keypoints.
+            display_keypoint(frame, keypoints, "RWrist")
+            display_keypoint(frame, keypoints, "LWrist")
+            display_keypoint(frame, keypoints, "RShoulder")
+            display_keypoint(frame, keypoints, "LShoulder")
 
             # Dilate the interpolated frame (if enabled).
             if CONFIG["use_dilation"]:
@@ -545,9 +413,71 @@ if __name__ == "__main__":
             elif CONFIG["arm_gesture_classifier"] == "autoencoder":
                 prediction = get_autoencoder_prediction(autoencoder, interpolated_frame)
             elif CONFIG["arm_gesture_classifier"] == "heuristics":
-                pass
-            print(CLASS_DICT_INVERSE[prediction])
+                prediction = get_heuristic_prediction(keypoints)
+            
+            if prediction != CLASS_DICT["None"]:
+                print("Arm: ", CLASS_DICT_INVERSE[prediction])
+
+            # Perform the StartStop action separately.
+            if prediction == CLASS_DICT["StartStop"]:
+                if not presentation_opened:
+                    wrapper = PowerpointWrapper()
+                    presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+                    presentation.run_slideshow()
+                    presentation_opened = True
+                    predicting = True
+                    pause_stopwatch.start()
+                else:
+                    predicting = not predicting
+
+            # Only perform the other actions if the system is currently
+            # predicting and with at least 1 second pause between gestures.
+            if prediction != CLASS_DICT["None"] and predicting and pause_stopwatch.time_elapsed > 1:
+                if prediction == CLASS_DICT["RNext"]:
+                    presentation.next_slide()
+                elif prediction == CLASS_DICT["LPrev"]:
+                    presentation.previous_slide()
+                if prediction == CLASS_DICT["Reset"]:
+                    pass
+
+                pause_stopwatch.start()
+
             ### END arm gesture detection.
+
+            ### Hand gesture detection.
+            if CONFIG["hand_gestures_enabled"] is True and hand_rectangles:
+                # First, see what prediction is obtained for this frame.
+                if hand_rectangles:
+                    left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
+                    if right_hand_region is not None and right_hand_region.size != 0:
+                        wrist_shoulder_distance = get_wrist_shoulder_distance(keypoints)
+
+                        # Only predict if the wrist is close to the shoulder.
+                        if wrist_shoulder_distance < 50:
+                            if CONFIG["hand_gesture_classifier"] == "svm":
+                                prediction = get_svm_prediction(hand_gesture_classifier, right_hand_region)
+                            elif CONFIG["hand_gesture_classifier"] == "gradients":
+                                prediction = get_gradients_prediction(right_hand_region)
+
+                        # Next, look in the history of predictions for the majority prediction.
+                        hand_gesture_history.append(prediction)
+                        hand_gesture_history = hand_gesture_history[-CONFIG["hand_gesture_window_history_size"]:]
+                        print("Palm count: %d. Fist count: %d." % (hand_gesture_history.count(CLASS_DICT["ZoomIn"]), hand_gesture_history.count(CLASS_DICT["ZoomOut"])))
+                        if hand_gesture_stopwatch.time_elapsed < CONFIG["hand_gesture_time_window_s"]:
+                            majority_gesture = get_majority_hand_gesture(hand_gesture_history)
+                            
+                            # If needed, perform an action on the presentation. TODO
+                            print("Hand: ", CLASS_DICT_INVERSE[majority_gesture])
+
+                            # Restart the timer.
+                            hand_gesture_stopwatch.start()
+                        
+                    # If needed, move the mouse cursor. TODO
+                    if presentation.zoom:
+                        new_mouse_position = get_mouse_position(keypoints, mouse_x_positions, mouse_y_positions)
+                        mouse.position = (new_mouse_position[0], new_mouse_position[1])
+
+            ### END hand gesture detection.
 
         # Stop measuring frame time and display FPS.
         end_frame_time = current_milli_time()
