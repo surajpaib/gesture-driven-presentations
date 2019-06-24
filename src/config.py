@@ -16,7 +16,7 @@ CONFIG = {
 
     "presentation_path": "MRP-6.pptx",
 
-    "correlation_classifier_dataset": "dataset\\",
+    "correlation_classifier_dataset": "..\\dataset",
 
     "use_dilation": False,
     "kernel_size": 2,
