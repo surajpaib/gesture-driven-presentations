@@ -1,12 +1,14 @@
 import os
 import win32com.client
 import pyautogui
+from pynput.keyboard import Key, Controller
 
 class PresentationWrapper():
     def __init__(self, presentation):
         self.presentation = presentation
         self.spotlight = False
         self.zoom = False
+        self.keyboard = Controller()
 
     def run_slideshow(self):
         self.presentation.SlideShowSettings.Run()
@@ -35,7 +37,8 @@ class PresentationWrapper():
             return
 
         self.spotlight = True
-        pyautogui.press('f10')
+        # pyautogui.press('f10')
+        keyboard.press(Key.f10)
 
     def stop_spotlight(self):
         """
@@ -47,7 +50,8 @@ class PresentationWrapper():
             return
 
         self.spotlight = False
-        pyautogui.press('f10')
+        # pyautogui.press('f10')
+        self.keyboard.press(Key.f10)
 
     def start_zoom(self):
         """
@@ -64,7 +68,9 @@ class PresentationWrapper():
             return
 
         self.zoom = True
-        pyautogui.press('f12')
+        # pyautogui.press('f12')
+        # self.keyboard.press(Key.f12)
+        # self.keyboard.release(Key.f12)
 
     def stop_zoom(self):
         """
@@ -76,7 +82,9 @@ class PresentationWrapper():
             return
 
         self.zoom = False
-        pyautogui.press('f12')
+        # pyautogui.press('f12')
+        # self.keyboard.press(Key.f12)
+        # self.keyboard.release(Key.f12)
 
 class PowerpointWrapper():
     def __init__(self):
