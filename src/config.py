@@ -18,6 +18,9 @@ CONFIG = {
 
     "correlation_classifier_dataset": "..\\dataset",
 
+    "arm_gesture_classifier": "autoencoder", # ["cross-correlation", "autoencoder", "heuristics"]
+    "hand_gesture_classifier": "svm", # ["svm", "gradients"]
+
     "use_dilation": False,
     "kernel_size": 2,
 

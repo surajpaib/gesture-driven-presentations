@@ -118,3 +118,4 @@ dataset/
 xml_files/
 video_data_models/
 src/autoencoder_img
+src/models/
