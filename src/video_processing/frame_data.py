@@ -35,11 +35,11 @@ class FrameData:
     def create_xml_node(self):
         frame_node = ET.Element('Frame')
         avg_x_node = ET.SubElement(frame_node,"Avg_x")
-        avg_x_node.text = str(self.avg_point[0])
+        avg_x_node.text = str(int(self.avg_point[0]))
         avg_y_node = ET.SubElement(frame_node,"Avg_y")
-        avg_y_node.text = str(self.avg_point[1])
+        avg_y_node.text = str(int(self.avg_point[1]))
         avg_dist_node = ET.SubElement(frame_node,"Avg_dist")
-        avg_dist_node.text = str(self.avg_dist)
+        avg_dist_node.text = str(int(self.avg_dist))
         for i in range(len(self.keypoints)):
             frame_node.append(create_xml_for_keypoint(i,self.keypoints[i],self.avg_dist,self.avg_point))
         return frame_node
