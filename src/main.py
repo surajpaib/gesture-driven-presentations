@@ -1,5 +1,6 @@
 import time
 from typing import Tuple
+from copy import deepcopy
 
 import imutils
 
@@ -54,6 +55,16 @@ def hand_segmentation(left_hand_region: np.ndarray, right_hand_region: np.ndarra
     # TODO
     pass
 
+
+def save_matrix(event,x,y,flags,param):
+    """
+    Helper function used for data collection.
+    """
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        video_data = deepcopy(param)
+        video_data._frames = video_data._frames[-CONFIG["interpolation_frames"]:]
+        video_data.save_to_xml("../crosscorr/%s.xml" % time.time())
 
 # -------------------------------------------------------------------------------
 # Main function
@@ -119,14 +130,27 @@ if __name__ == "__main__":
                 kernel_size = CONFIG["kernel_size"]
                 kernel = np.ones((kernel_size, kernel_size), np.uint8)
                 interpolated_frame = cv2.dilate(interpolated_frame, kernel, iterations=1)
-                interpolated_frame_resized = cv2.resize(interpolated_frame_dilated, (320, 320))
+                interpolated_frame_resized = cv2.resize(interpolated_frame, (interpolated_frame.shape[1] * 10, interpolated_frame.shape[0] * 10))
             else:
-                interpolated_frame_resized = cv2.resize(interpolated_frame, (320, 320))
+                interpolated_frame_resized = cv2.resize(interpolated_frame, (interpolated_frame.shape[1] * 10, interpolated_frame.shape[0] * 10))
             cv2.imshow("Interpolated frame", interpolated_frame_resized)
 
-            # Get prediction from cross-correlation classifier?
-            label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
-            print(label, lowest_distance, highest_magnitude)
+            # Get prediction from cross-correlation classifier
+            # label, lowest_distance, highest_magnitude = correlation_classifier.classify(interpolated_frame)
+            lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude = correlation_classifier.classify(interpolated_frame)
+            if lowest_distance_label == highest_magnitude_label:
+                if lowest_distance_label == "Reset7" and lowest_distance < 2 and highest_magnitude > 5:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "Reset"
+                if lowest_distance_label == "RNext7Mirror" and highest_magnitude > 2.5:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "RNext"
+                if lowest_distance_label == "LPrev7" and highest_magnitude > 3:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "LPrev"
+                if lowest_distance_label == "StartStop7" and lowest_distance < 2.5 and highest_magnitude > 5:
+                    # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
+                    prediction = "StartStop"
 
         if keypoints is not None:
             # Extract the hand rectangles, segment out the hand and perform some gesture detection (?).

@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
+import cv2
 
 import sys
 sys.path.append("./")
@@ -90,27 +91,38 @@ class VideoData:
             if len(last_keypoints) > 1:
                 last_keypoints_x = [p[0] for p in last_keypoints]
                 last_keypoints_y = [p[1] for p in last_keypoints]
-                f1 = interp1d(last_keypoints_x[-2:], last_keypoints_y[-2:], kind='linear')
+                # f1 = interp1d(last_keypoints_x[-2:], last_keypoints_y[-2:], kind='linear')
 
-                # Find how many interpolation steps are needed from the last x to the previous x.
-                # Also determine a good step size (so that the values go from 0.75 to 1 linearly).
-                steps = abs(last_keypoints_x[-1] - last_keypoints_x[-2]) + 1
-                if steps == 1:
-                    continue
-                step_size = (1 / self.interpolation_frames) / (steps-1)     # (1 / self.interpolation_frames) gives 0.25 for 4 frames
-                step = 0
+                # # Find how many interpolation steps are needed from the last x to the previous x.
+                # # Also determine a good step size (so that the values go from 0.75 to 1 linearly).
+                # steps = abs(last_keypoints_x[-1] - last_keypoints_x[-2]) + 1
+                # if steps == 1:
+                #     continue
+                # step_size = (1 / self.interpolation_frames) / (steps-1)     # (1 / self.interpolation_frames) gives 0.25 for 4 frames
+                # step = 0
     
-                # Find the direction of the interpolation.
-                base = last_keypoints_x[-2]
-                direction = 1
-                if last_keypoints_x[-2] > last_keypoints_x[-1]:
-                    direction = -1
+                # # Find the direction of the interpolation.
+                # base = last_keypoints_x[-2]
+                # direction = 1
+                # if last_keypoints_x[-2] > last_keypoints_x[-1]:
+                #     direction = -1
 
-                # Actually perform the interpolation.
-                for j in range(steps):
-                    x = base + direction * j
-                    matrix[int(f1(x)), x] = (1 - (1 / self.interpolation_frames)) + step * step_size    # (1 - (1 / self.interpolation_frames)) gives 0.75 for 4 frames
-                    step += 1
+                # # Actually perform the interpolation.
+                # for j in range(steps):
+                #     x = base + direction * j
+                #     matrix[int(f1(x)), x] = (1 - (1 / self.interpolation_frames)) + step * step_size    # (1 - (1 / self.interpolation_frames)) gives 0.75 for 4 frames
+                #     step += 1
+                x_A, x_B, y_A, y_B = last_keypoints_x[-2], last_keypoints_x[-1], last_keypoints_y[-2], last_keypoints_y[-1]
+                d = np.sqrt(np.square(x_A - x_B) + np.square(y_A - y_B))
+                # print("x_A: %d. x_B: %d. y_A: %d. y_B: %d. d: %.2f. int(d): %d" % (x_A, x_B, y_A, y_B, d, int(d)))
+                if d > 1:
+                    step_size = (1 / self.interpolation_frames) / int(d)
+                    for i in range(int(d)):
+                        x_i = int(x_A + i/d*(x_B-x_A))
+                        y_i = int(y_A + i/d*(y_B-y_A))
+                        matrix[y_i, x_i] = (1 - (1 / self.interpolation_frames)) + i * step_size
+                        # print("\tx_i: %d. y_i: %d. Value: %.2f" % (x_i, y_i, matrix[y_i, x_i]))
+                    matrix[y_B, x_B] = 1
 
             self._last_keypoint_list[k] = last_keypoints
 
