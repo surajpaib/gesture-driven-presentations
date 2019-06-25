@@ -107,6 +107,8 @@ ACCEPTABLE_DISTANCE_WRIST_SHIFT = 1.4
 ACCEPTABLE_DISTANCE_WRIST_RESET_SHIFT = 0.7
 ACCEPTABLE_DISTANCE_WRIST_SHOULDER = 0.3
 def get_heuristic_prediction(keypoints):
+    global wrists_at_shoulders_booleans, keypoint_frame_lists
+
     # Extract the relevant keypoints.
     r_wrist = keypoints[KEYPOINTS_DICT["RWrist"]]
     l_wrist = keypoints[KEYPOINTS_DICT["LWrist"]]
@@ -319,6 +321,8 @@ if __name__ == "__main__":
     ### Initialisation of arm gesture classifier.
     video_data = VideoData(interp_frames, used_keypoints=used_keypoints, confidence_threshold=confidence_threshold,
                         matrix_size=img_size)
+    arm_gesture_text_timer = Stopwatch()
+    arm_gesture_displaying = ""
     if CONFIG["arm_gesture_classifier"] == "cross-correlation":
         correlation_classifier = CorrelationClassifier()
 
@@ -417,6 +421,8 @@ if __name__ == "__main__":
 
             # Perform the StartStop action separately.
             if prediction == CLASS_DICT["StartStop"]:
+                arm_gesture_text_timer.start()
+                arm_gesture_displaying = CLASS_DICT_INVERSE[prediction]
                 if not presentation_opened:
                     wrapper = PowerpointWrapper()
                     presentation = wrapper.open_presentation(CONFIG["presentation_path"])
@@ -430,6 +436,8 @@ if __name__ == "__main__":
             # Only perform the other actions if the system is currently
             # predicting and with at least 1 second pause between gestures.
             if prediction != CLASS_DICT["None"] and predicting and pause_stopwatch.time_elapsed > 1:
+                arm_gesture_text_timer.start()
+                arm_gesture_displaying = CLASS_DICT_INVERSE[prediction]
                 if prediction == CLASS_DICT["RNext"]:
                     presentation.next_slide()
                 elif prediction == CLASS_DICT["LPrev"]:
@@ -478,6 +486,17 @@ if __name__ == "__main__":
         end_frame_time = current_milli_time()
         frame_time = (end_frame_time - start_frame_time) / 1000  # seconds
         cv2.putText(frame, "FPS: %d" % int(1 / frame_time), (70, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        # Display the last detected gesture for 1 second.
+        prediction_window = np.zeros((100, 500, 3), np.uint8)
+        if arm_gesture_displaying != "":
+            if arm_gesture_text_timer.time_elapsed < 1:
+                cv2.putText(prediction_window, arm_gesture_displaying, (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2)
+            else:
+                arm_gesture_displaying = ""
+        if arm_gesture_displaying == "" and not predicting:
+            cv2.putText(prediction_window, "Stopped", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2)
+        cv2.imshow("Prediction", prediction_window)
 
         # Display the video frame.
         cv2.imshow("Video Feed", frame)
