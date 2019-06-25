@@ -443,7 +443,8 @@ if __name__ == "__main__":
                 elif prediction == CLASS_DICT["LPrev"]:
                     presentation.previous_slide()
                 if prediction == CLASS_DICT["Reset"]:
-                    pass
+                    presentation.close_slideshow()
+                    presentation.run_slideshow()
 
                 pause_stopwatch.start()
             ### END arm gesture detection.
