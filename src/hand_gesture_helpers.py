@@ -96,7 +96,6 @@ def skin_segmentation_thresholds(img):
     NOTE: OpenCV color ranges are: H from 0-179, S and V from 0-255
     """
     
-    img = basic_preprocessing_steps(img)
     rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
@@ -161,8 +160,10 @@ def segment_hand_external_library(hand_region):
 
     img_msk = skin_detector.process(hand_region)
 
-    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    cv2.filter2D(img_msk, -1, disc, img_msk)
+    # disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # cv2.filter2D(img_msk, -1, disc, img_msk)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    img_msk = cv2.dilate(img_msk, kernel, iterations = 1)
 
     final_mask = np.zeros(img_msk.shape, np.uint8)
     _, contours, _ = cv2.findContours(img_msk, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -191,8 +192,10 @@ def segment_hand_histograms(hand_region):
 
     # Backproject histogram, binarize and mask the hand region.
     mask = cv2.calcBackProject([hand_region_hsv], [0, 1], patch_hist, [0, 180, 0, 256], 1)
-    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    cv2.filter2D(mask, -1, disc, mask)
+    # disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # cv2.filter2D(mask, -1, disc, mask)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    mask = cv2.dilate(mask, kernel, iterations = 1)
 
     final_mask = np.zeros(mask.shape, np.uint8)
     _, contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)

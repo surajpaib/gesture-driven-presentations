@@ -65,7 +65,7 @@ def get_cross_correlation_prediction(correlation_classifier, interpolated_frame)
         if lowest_distance_label == "Reset7" and lowest_distance < 2 and highest_magnitude > 5:
             # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
             prediction = CLASS_DICT["Reset"]
-        elif lowest_distance_label == "RNext7Mirror" and highest_magnitude > 2.5:
+        elif lowest_distance_label == "RNext7" and highest_magnitude > 3:
             # print(lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude)
             prediction = CLASS_DICT["RNext"]
         elif lowest_distance_label == "LPrev7" and highest_magnitude > 3:
@@ -420,7 +420,7 @@ if __name__ == "__main__":
                 print("Arm: ", CLASS_DICT_INVERSE[prediction])
 
             # Perform the StartStop action separately.
-            if prediction == CLASS_DICT["StartStop"]:
+            if prediction == CLASS_DICT["StartStop"] and pause_stopwatch.time_elapsed > 1:
                 arm_gesture_text_timer.start()
                 arm_gesture_displaying = CLASS_DICT_INVERSE[prediction]
                 if not presentation_opened:
@@ -432,6 +432,7 @@ if __name__ == "__main__":
                     pause_stopwatch.start()
                 else:
                     predicting = not predicting
+                pause_stopwatch.start()
 
             # Only perform the other actions if the system is currently
             # predicting and with at least 1 second pause between gestures.
@@ -450,7 +451,7 @@ if __name__ == "__main__":
             ### END arm gesture detection.
 
             ### Hand gesture detection.
-            if CONFIG["hand_gestures_enabled"] is True and hand_rectangles:
+            if presentation_opened and CONFIG["hand_gestures_enabled"] is True and hand_rectangles:
                 # First, see what prediction is obtained for this frame.
                 if hand_rectangles:
                     left_hand_region, right_hand_region = extract_hand_regions(frame, hand_rectangles)
