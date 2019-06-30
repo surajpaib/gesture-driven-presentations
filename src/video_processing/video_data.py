@@ -1,9 +1,11 @@
 # from __future__ import annotations
 import xml.etree.ElementTree as ET
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import interp1d
+import cv2
 
 import sys
 sys.path.append("./")
@@ -77,7 +79,7 @@ class VideoData:
             if keypoint[2] > self.confidence_threshold:
                 key_x = int(keypoint[0] * self._matrix_size / 6 + self._matrix_size / 2)
                 key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 6)
-                if key_x >= self._matrix_size or key_y >= self._matrix_size - self._matrix_vertical_crop:
+                if key_x >= self._matrix_size or key_y >= self._matrix_size - self._matrix_vertical_crop or key_x < 0 or key_y < 0:
                     print("Error adding frame; key is to big: "+str(key_x) + " | " +str(key_y))
                     continue
                 matrix[key_y, key_x] = 1
@@ -90,17 +92,16 @@ class VideoData:
             if len(last_keypoints) > 1:
                 last_keypoints_x = [p[0] for p in last_keypoints]
                 last_keypoints_y = [p[1] for p in last_keypoints]
-                x_A, x_B, y_A, y_B = last_keypoints_x[-2], last_keypoints_x[-1], last_keypoints_y[-2], last_keypoints_y[
-                    -1]
+                
+                x_A, x_B, y_A, y_B = last_keypoints_x[-2], last_keypoints_x[-1], last_keypoints_y[-2], last_keypoints_y[-1]
                 d = np.sqrt(np.square(x_A - x_B) + np.square(y_A - y_B))
-                # print("x_A: %d. x_B: %d. y_A: %d. y_B: %d. d: %.2f. int(d): %d" % (x_A, x_B, y_A, y_B, d, int(d)))
+
                 if d > 1:
                     step_size = (1 / self.interpolation_frames) / int(d)
                     for i in range(int(d)):
-                        x_i = int(x_A + i / d * (x_B - x_A))
-                        y_i = int(y_A + i / d * (y_B - y_A))
+                        x_i = int(x_A + i/d*(x_B-x_A))
+                        y_i = int(y_A + i/d*(y_B-y_A))
                         matrix[y_i, x_i] = (1 - (1 / self.interpolation_frames)) + i * step_size
-                        # print("\tx_i: %d. y_i: %d. Value: %.2f" % (x_i, y_i, matrix[y_i, x_i]))
                     matrix[y_B, x_B] = 1
 
             self._last_keypoint_list[k] = last_keypoints
@@ -167,7 +168,7 @@ def get_final_matrix(interpolation_frames, filename):
     Helper function to make code a bit cleaner.
     """
 
-    data = VideoData(interpolation_frames)
+    data = VideoData()
     data.load_xml_file(filename)
     return data.get_flattened_matrix()
 
@@ -176,11 +177,15 @@ def get_matrix_list(interpolation_frames, filename):
     Helper function to make code a bit cleaner.
     """
 
-    data = VideoData(interpolation_frames)
+    data = VideoData()
     data.load_xml_file(filename)
     return data.get_matrices()
 
 if __name__ == "__main__":
-    data = VideoData(interpolation_frames=4, matrix_size=32, used_keypoints=["RWrist","LWrist"])
-    data.load_xml_file("../process_results/test.xml")
-    data.save_to_xml("../process_results/test_s.xml")
+    input_path = "../crosscorr"
+    output_path = "../crosscorr/imgs"
+
+    for filename in os.listdir(input_path):
+        if filename.endswith(".xml"):
+            matrix = get_final_matrix(CONFIG["interpolation_frames"], os.path.join(input_path, filename))
+            cv2.imwrite(os.path.join(output_path, filename+".png"), matrix*255)

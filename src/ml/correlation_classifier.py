@@ -51,7 +51,7 @@ class CorrelationClassifier:
                                            confidence_threshold=self.confidence_threshold)
                     video_data.load_xml_file(os.path.join(gesture_path, filename))
                     self._dataset[label].append(video_data)
-                    self._flattened_matrices[label].append(video_data.get_flattened_matrix())
+                    self._flattened_matrices[label].append(video_data.get_newest_matrix())
 
     def classify(self, runtime_matrix):
         """
@@ -66,18 +66,20 @@ class CorrelationClassifier:
         highest_magnitude = 0
         highest_magnitude_label = None
 
+        # VERSION 1: AVERAGE
         for label in self._gesture_labels:
             flattened_matrices = self._flattened_matrices[label]
             peak_center_distances = []
             peak_magnitudes = []
             for other_matrix in flattened_matrices:
                 corr = signal.fftconvolve(runtime_matrix, other_matrix[::-1, ::-1])
+                middle_index = [corr.shape[0] // 2, corr.shape[1] // 2]
 
                 # Find the peak of the cross-correlation.
                 peak_index = np.unravel_index(np.argmax(corr, axis=None), corr.shape)
 
                 # Compute the distance to the center.
-                distance = np.sqrt(np.square(peak_index[0] - 62) + np.square(peak_index[1] - 62))
+                distance = np.sqrt(np.square(peak_index[0] - middle_index[0]) + np.square(peak_index[1] - middle_index[1]))
                 peak_center_distances.append(distance)
 
                 # Also consider the magnitude of the peak.
@@ -94,7 +96,4 @@ class CorrelationClassifier:
                 highest_magnitude = avg_magnitude
                 highest_magnitude_label = label
 
-        if lowest_distance_label == highest_magnitude_label and lowest_distance < 10 and highest_magnitude > 50:
-            return lowest_distance_label, lowest_distance, highest_magnitude
-        else:
-            return None, lowest_distance, highest_magnitude
+        return lowest_distance_label, lowest_distance, highest_magnitude_label, highest_magnitude

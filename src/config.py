@@ -8,15 +8,25 @@ CONFIG = {
     "model_pose": "COCO",
     "net_resolution": "176x-1",
 
-    "interpolation_frames": 10,
+    "interpolation_frames": 8,
     "matrix_size": 32,
-    "used_keypoints": ["RWrist", "LWrist", "RShoulder", "LShoulder"],
+    "used_keypoints": ["RWrist", "LWrist"],
     "confidence_threshold": 0.3,
     "matrix_vertical_crop": 10,
 
-    "presentation_path": "../MRP-6.pptx",
+    "presentation_path": "..\\MRP-6.pptx",
 
-    "correlation_classifier_dataset": "dataset\\",
+    "correlation_classifier_dataset": "..\\dataset",
+
+    # hand gesture classification things
+    "hand_gestures_enabled": False,
+    "hand_gesture_classifier_path": "..\\models\\hand_classifier_v1.joblib",
+    "hand_motion_smoothing_frames": 3,
+    "hand_gesture_time_window_s": 0.5,
+    "hand_gesture_window_history_size": 25,
+
+    "arm_gesture_classifier": "heuristics", # ["cross-correlation", "autoencoder", "heuristics"]
+    "hand_gesture_classifier": "svm", # ["svm", "gradients"]
 
     "use_dilation": False,
     "kernel_size": 2,
@@ -35,7 +45,7 @@ CONFIG = {
     "autoencoder_img_path": ".\\autoencoder_img",
     "latent_space_dim": 100,
     "batch_size": 32,
-    "num_epochs": 100,
+    "num_epochs": 200,
     "learning_rate": 1e-3,
     "weight_decay": 1e-5,
     "noise_frames": 2,

@@ -16,7 +16,31 @@ from keras.preprocessing.image import load_img
 from keras.preprocessing.image import img_to_array
 from keras.preprocessing.image import ImageDataGenerator
 
+CLASS_DICT = {
+    # arm gestures
+    "None": -1,
+    "LPrev": 0,
+    "Reset": 1,
+    "RNext": 2,
+    "StartStop": 3,
 
+    # hand gestures
+    "ZoomIn": 4,
+    "ZoomOut": 5
+}
+
+CLASS_DICT_INVERSE = {
+    # arm gestures
+    -1: "None",
+    0: "LPrev",
+    1: "Reset",
+    2: "RNext",
+    3: "StartStop",
+
+    # hand gestures
+    4: "ZoomIn",
+    5: "ZoomOut"
+}
 
 def get_latent_space_loaders(img_size=32, batch_size=32):
     """
@@ -259,14 +283,11 @@ def create_video_data_labels(interpolation_frames=CONFIG["interpolation_frames"]
     xml_folder = os.path.dirname(os.path.realpath(__file__)).split("src")[0].replace("\\", "/") + CONFIG[
         "xml_files_path"]
     data = []
-    good_videos_list = open('../good_videos.txt').read().splitlines()
     labels = []
     min_data = 99
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
     for label, folder in enumerate(os.listdir(xml_folder)):
         for file in os.listdir(xml_folder + '/' + folder):
-            if file not in good_videos_list:
-                continue
             file_path = xml_folder + '/' + folder + '/' + file
             video_data = VideoData(interpolations_frames=interpolation_frames, matrix_size=matrix_size,
                                    used_keypoints=used_keypoints, noise_frames=noise_parameters)
@@ -393,18 +414,20 @@ def data_augmentation(data, labels, batch_size):
     # y = np.array(y)
     return X, y
 
+def main():
+    # train_data, train_labels = load_video_data_labels(8,2)
+    # p = np.random.permutation(len(train_data))
+    # train_data, train_labels = train_data[p], train_labels[p]
+    # import matplotlib.pyplot as plt
+    #
+    # for i in p[:100]:
+    #     plt.imshow(train_data[i], cmap='gray')
+    #     plt.title("Label = " + str(train_labels[i]))
+    #     plt.show()
 
-#
-# train_data, train_labels = load_video_data_labels(8,2)
-# p = np.random.permutation(len(train_data))
-# train_data, train_labels = train_data[p], train_labels[p]
-# import matplotlib.pyplot as plt
-#
-# for i in p[:100]:
-#     plt.imshow(train_data[i], cmap='gray')
-#     plt.title("Label = " + str(train_labels[i]))
-#     plt.show()
+    # test_autoencoder_space()
+    train_autoencoder()
+    train_classifier()
 
-# test_autoencoder_space()
-train_autoencoder()
-train_classifier()
+if __name__== "__main__":
+    main()
