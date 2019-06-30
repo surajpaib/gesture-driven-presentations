@@ -19,6 +19,7 @@ import skimage.color as color
 
 import pyautogui
 import pynput
+from pynput.keyboard import Key, Listener
 
 from openpose_utils import *
 from wrappers import PowerpointWrapper
@@ -209,13 +210,31 @@ def get_heuristic_prediction(keypoints):
 def segment_hand_region(right_hand_region):
     # Resize to a standard size.
     right_hand_region_resized = cv2.resize(right_hand_region, (150, 150), interpolation=cv2.INTER_NEAREST)
-    
+    right_hand_region_resized = basic_preprocessing_steps(right_hand_region_resized)
+    # print(right_hand_region_resized)
+
+    #right_hand_region_resized = cv2.equalizeHist(right_hand_region_resized)
+    # right_hand_region_resized_ycrcb = cv2.cvtColor(right_hand_region_resized, cv2.COLOR_BGR2YCR_CB)
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    # right_hand_region_resized_ycrcb[0] = clahe.apply(right_hand_region_resized_ycrcb[0])
+    # right_hand_region_resized = cv2.cvtColor(right_hand_region_resized_ycrcb, cv2.COLOR_YCR_CB2BGR)
+
     # "Average" the result of the three segmentation methods.
     mask1, _ = segment_hand_external_library(right_hand_region_resized)
     mask2 = hand_segmentation(right_hand_region_resized)
     mask3, _ = segment_hand_histograms(right_hand_region_resized)
+    final_mask = np.zeros(mask1.shape).astype(np.uint8)
+    # print("1: %s, 2: %s, 3: %s", mask1.shape, mask2.shape, mask3.shape)
+    # for i in range(mask1.shape[0]):
+    #     for j in range(mask1.shape[1]):
+    #         # print(mask1[i][j], mask2[i][j], mask3[i][j])
+    #         if int(mask1[i][j]) + int(mask2[i][j]) + int(mask3[i][j]) >= 2 * 255:
+    #             final_mask[i][j] = 255
     final_mask = mask1 & mask2 & mask3
     cv2.imshow("Mask", final_mask)
+    cv2.imshow("Mask1", mask1)
+    cv2.imshow("Mask2", mask2)
+    cv2.imshow("Mask3", mask3)
 
     right_hand_segmented = cv2.bitwise_and(right_hand_region_resized, right_hand_region_resized, mask = final_mask)
     return final_mask, right_hand_segmented
@@ -297,12 +316,29 @@ def display_keypoint(frame, keypoints, keypoint_name):
 # Main function
 #-------------------------------------------------------------------------------
 
+def save_matrix(event,x,y,flags,param):
+    """
+    Helper function used for data collection.
+    """
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        video_data = deepcopy(param)
+        video_data._frames = video_data._frames[-CONFIG["interpolation_frames"]:]
+        video_data.save_to_xml("../crosscorr/%s.xml" % time.time())
+
+# def on_press(key):
+#     if key == ord('s'):
+#         started_predicting = True
+#     elif key == ord('q'):
+#         exit(-1)
+
+started_predicting = False
 if __name__ == "__main__":
     # Initialize OpenPose.
     opWrapper = init_openpose(net_resolution="176x-1", hand_detection=False)
 
     # Get the reference to the webcam.
-    cv2.namedWindow('Video Feed')
+    # cv2.namedWindow('Video Feed')
     camera = cv2.VideoCapture(0)
     num_frames = 0
 
@@ -367,6 +403,14 @@ if __name__ == "__main__":
             exit(-1)
     ### END of hand gesture classifier initialisation.
 
+    ### Start the presentation.
+    wrapper = PowerpointWrapper()
+    presentation = wrapper.open_presentation(CONFIG["presentation_path"])
+    presentation.run_slideshow()
+    presentation.next_slide()
+    presentation_opened = True
+    ### END
+
     # Keep looping, until interrupted by a Q keypress.
     while True:
 
@@ -386,7 +430,7 @@ if __name__ == "__main__":
         hand_rectangles = get_hand_rectangles_from_datum(datum)
 
         # If any person was detected on the screen, we can perform the classification.
-        if keypoints is not None:
+        if started_predicting and keypoints is not None:
             # Build a FrameData object and add it to the VideoData to get the interpolation of the previous frames.
             frame_data = FrameData.from_keypoints(keypoints)
             video_data.add_frame(frame_data)
@@ -406,7 +450,7 @@ if __name__ == "__main__":
                 kernel = np.ones((kernel_size, kernel_size), np.uint8)
                 interpolated_frame = cv2.dilate(interpolated_frame, kernel, iterations=1)
             interpolated_frame_resized = cv2.resize(interpolated_frame, (interpolated_frame.shape[1] * 10, interpolated_frame.shape[0] * 10))
-            cv2.imshow("Interpolated frame", interpolated_frame_resized)
+            # cv2.imshow("Interpolated frame", interpolated_frame_resized)
 
             ### Arm gesture detection.
             if CONFIG["arm_gesture_classifier"] == "cross-correlation":
@@ -420,23 +464,15 @@ if __name__ == "__main__":
                 print("Arm: ", CLASS_DICT_INVERSE[prediction])
 
             # Perform the StartStop action separately.
-            if prediction == CLASS_DICT["StartStop"] and pause_stopwatch.time_elapsed > 1:
+            if prediction == CLASS_DICT["StartStop"] and pause_stopwatch.time_elapsed > 1.5:
                 arm_gesture_text_timer.start()
                 arm_gesture_displaying = CLASS_DICT_INVERSE[prediction]
-                if not presentation_opened:
-                    wrapper = PowerpointWrapper()
-                    presentation = wrapper.open_presentation(CONFIG["presentation_path"])
-                    presentation.run_slideshow()
-                    presentation_opened = True
-                    predicting = True
-                    pause_stopwatch.start()
-                else:
-                    predicting = not predicting
+                predicting = not predicting
                 pause_stopwatch.start()
 
             # Only perform the other actions if the system is currently
             # predicting and with at least 1 second pause between gestures.
-            if prediction != CLASS_DICT["None"] and predicting and pause_stopwatch.time_elapsed > 1:
+            if prediction != CLASS_DICT["None"] and predicting and pause_stopwatch.time_elapsed > 1.5:
                 arm_gesture_text_timer.start()
                 arm_gesture_displaying = CLASS_DICT_INVERSE[prediction]
                 if prediction == CLASS_DICT["RNext"]:
@@ -490,24 +526,27 @@ if __name__ == "__main__":
         cv2.putText(frame, "FPS: %d" % int(1 / frame_time), (70, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
         # Display the last detected gesture for 1 second.
-        prediction_window = np.zeros((100, 500, 3), np.uint8)
-        if arm_gesture_displaying != "":
-            if arm_gesture_text_timer.time_elapsed < 1:
-                cv2.putText(prediction_window, arm_gesture_displaying, (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2)
-            else:
-                arm_gesture_displaying = ""
-        if arm_gesture_displaying == "" and not predicting:
-            cv2.putText(prediction_window, "Stopped", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2)
-        cv2.imshow("Prediction", prediction_window)
+        if started_predicting:
+            prediction_window = np.zeros((100, 500, 3), np.uint8)
+            if arm_gesture_displaying != "":
+                if arm_gesture_text_timer.time_elapsed < 1:
+                    cv2.putText(prediction_window, arm_gesture_displaying, (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2)
+                else:
+                    arm_gesture_displaying = ""
+            if arm_gesture_displaying == "" and not predicting:
+                cv2.putText(prediction_window, "Stopped", (20, 75), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 2)
+            cv2.imshow("Prediction", prediction_window)
 
         # Display the video frame.
         cv2.imshow("Video Feed", frame)
+        # cv2.setMouseCallback("Video Feed", save_matrix, video_data)
 
         # If the user pressed "Q", then quit.
         keypress = cv2.waitKey(1) & 0xFF
         if keypress == ord("q"):
             break
-        
+        elif keypress == ord("s"):
+            started_predicting = True
 
 # Clean up.
 camera.release()

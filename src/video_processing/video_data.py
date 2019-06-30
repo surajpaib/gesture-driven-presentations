@@ -1,5 +1,6 @@
 # from __future__ import annotations
 import xml.etree.ElementTree as ET
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,7 +79,7 @@ class VideoData:
             if keypoint[2] > self.confidence_threshold:
                 key_x = int(keypoint[0] * self._matrix_size / 6 + self._matrix_size / 2)
                 key_y = int(keypoint[1] * self._matrix_size / 6 + self._matrix_size / 6)
-                if key_x >= self._matrix_size or key_y >= self._matrix_size - self._matrix_vertical_crop:
+                if key_x >= self._matrix_size or key_y >= self._matrix_size - self._matrix_vertical_crop or key_x < 0 or key_y < 0:
                     print("Error adding frame; key is to big: "+str(key_x) + " | " +str(key_y))
                     continue
                 matrix[key_y, key_x] = 1
@@ -167,7 +168,7 @@ def get_final_matrix(interpolation_frames, filename):
     Helper function to make code a bit cleaner.
     """
 
-    data = VideoData(interpolation_frames)
+    data = VideoData()
     data.load_xml_file(filename)
     return data.get_flattened_matrix()
 
@@ -176,11 +177,15 @@ def get_matrix_list(interpolation_frames, filename):
     Helper function to make code a bit cleaner.
     """
 
-    data = VideoData(interpolation_frames)
+    data = VideoData()
     data.load_xml_file(filename)
     return data.get_matrices()
 
 if __name__ == "__main__":
-    data = VideoData(interpolation_frames=4, matrix_size=32, used_keypoints=["RWrist","LWrist"])
-    data.load_xml_file("../process_results/test.xml")
-    data.save_to_xml("../process_results/test_s.xml")
+    input_path = "../crosscorr"
+    output_path = "../crosscorr/imgs"
+
+    for filename in os.listdir(input_path):
+        if filename.endswith(".xml"):
+            matrix = get_final_matrix(CONFIG["interpolation_frames"], os.path.join(input_path, filename))
+            cv2.imwrite(os.path.join(output_path, filename+".png"), matrix*255)
