@@ -12,10 +12,9 @@ scipy==1.2.1
 sklearn==0.0
 opencv-python==3.4.3.18
 imutils
-torch
+torch==1.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
 numpy
-opencv
 imutils
-pyautogui
 matplotlib
 keras
+pynput

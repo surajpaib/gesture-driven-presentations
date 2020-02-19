@@ -182,7 +182,7 @@ if __name__ == "__main__":
                 # Open presentation and stuff:
                 if not presentation_opened:
                     wrapper = PowerpointWrapper()
-                    presentation = wrapper.open_presentation("../MRP-6.pptx")
+                    presentation = wrapper.open_presentation("MRP-6.pptx")
                     presentation.run_slideshow()
                     presentation_opened = True
 
